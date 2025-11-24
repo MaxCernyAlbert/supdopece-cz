@@ -1,8 +1,22 @@
-import { kv } from '@vercel/kv';
 import fs from 'fs/promises';
 import path from 'path';
 
-const isProduction = process.env.VERCEL === '1';
+// Lazy import KV - importuje se jen když je potřeba
+let kvClient: any = null;
+async function getKV() {
+  if (!kvClient) {
+    const { kv } = await import('@vercel/kv');
+    kvClient = kv;
+  }
+  return kvClient;
+}
+
+// Zkontroluj jestli je KV nastavené
+const hasKV = () => {
+  return !!(process.env.KV_URL || process.env.KV_REST_API_URL);
+};
+
+const isProduction = process.env.VERCEL === '1' && hasKV();
 
 // Storage keys
 const KEYS = {
@@ -11,7 +25,7 @@ const KEYS = {
   SMS_CODES: 'sms-codes',
 } as const;
 
-// Lokální soubory (pro development)
+// Lokální soubory (pro development a fallback)
 const FILES = {
   CUSTOMERS: path.join(process.cwd(), 'data', 'magic-tokens.json'),
   ORDERS: path.join(process.cwd(), 'data', 'orders.json'),
@@ -23,6 +37,7 @@ export async function getData<T>(key: keyof typeof KEYS): Promise<T | null> {
   try {
     if (isProduction) {
       // Vercel KV
+      const kv = await getKV();
       const data = await kv.get<T>(KEYS[key]);
       return data;
     } else {
@@ -42,6 +57,7 @@ export async function setData<T>(key: keyof typeof KEYS, data: T): Promise<void>
   try {
     if (isProduction) {
       // Vercel KV
+      const kv = await getKV();
       await kv.set(KEYS[key], data);
     } else {
       // Lokální JSON soubor
