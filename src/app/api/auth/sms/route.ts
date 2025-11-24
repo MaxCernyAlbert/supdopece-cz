@@ -59,7 +59,7 @@ async function saveSMSCodes(codes: Map<string, SMSCode>) {
 async function findCustomerByPhone(phone: string): Promise<Customer | null> {
   const tokens = await loadTokens();
 
-  for (const [_, customer] of tokens) {
+  for (const customer of Array.from(tokens.values())) {
     if (customer.phone === phone) {
       return customer;
     }
