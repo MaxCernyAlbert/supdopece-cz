@@ -36,19 +36,26 @@ const FILES = {
 // Načíst data
 export async function getData<T>(key: keyof typeof KEYS): Promise<T | null> {
   try {
+    console.log(`[Storage] Loading ${key}, isProduction: ${isProduction}, hasKV: ${hasKV()}`);
+
     if (isProduction) {
       // Vercel KV
+      console.log(`[Storage] Using Vercel KV for ${key}`);
       const kv = await getKV();
+      console.log(`[Storage] KV client obtained, fetching key: ${KEYS[key]}`);
       const data = await kv.get<T>(KEYS[key]);
+      console.log(`[Storage] Data loaded from KV:`, data ? 'Found' : 'Not found');
       return data;
     } else {
       // Lokální JSON soubor
+      console.log(`[Storage] Using local JSON file for ${key}`);
       const filePath = FILES[key];
       const fileContent = await fs.readFile(filePath, 'utf-8');
       return JSON.parse(fileContent) as T;
     }
   } catch (error) {
-    console.error(`Error loading ${key}:`, error);
+    console.error(`[Storage] Error loading ${key}:`, error);
+    console.error(`[Storage] Error details:`, error instanceof Error ? error.message : String(error));
     return null;
   }
 }
@@ -56,18 +63,28 @@ export async function getData<T>(key: keyof typeof KEYS): Promise<T | null> {
 // Uložit data
 export async function setData<T>(key: keyof typeof KEYS, data: T): Promise<void> {
   try {
+    console.log(`[Storage] Saving ${key}, isProduction: ${isProduction}, hasKV: ${hasKV()}`);
+
     if (isProduction) {
       // Vercel KV
+      console.log(`[Storage] Using Vercel KV for saving ${key}`);
+      console.log(`[Storage] Data to save:`, JSON.stringify(data).substring(0, 100));
       const kv = await getKV();
+      console.log(`[Storage] KV client obtained, setting key: ${KEYS[key]}`);
       await kv.set(KEYS[key], data);
+      console.log(`[Storage] Data saved to KV successfully`);
     } else {
       // Lokální JSON soubor
+      console.log(`[Storage] Using local JSON file for saving ${key}`);
       const filePath = FILES[key];
       await fs.mkdir(path.dirname(filePath), { recursive: true });
       await fs.writeFile(filePath, JSON.stringify(data, null, 2));
+      console.log(`[Storage] Data saved to file successfully`);
     }
   } catch (error) {
-    console.error(`Error saving ${key}:`, error);
+    console.error(`[Storage] Error saving ${key}:`, error);
+    console.error(`[Storage] Error details:`, error instanceof Error ? error.message : String(error));
+    console.error(`[Storage] Error stack:`, error instanceof Error ? error.stack : 'No stack');
     throw error;
   }
 }

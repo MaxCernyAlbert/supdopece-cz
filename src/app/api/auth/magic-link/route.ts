@@ -59,8 +59,18 @@ export async function POST(request: NextRequest) {
     });
   } catch (error) {
     console.error('Chyba při generování magic link:', error);
+    console.error('Error stack:', error instanceof Error ? error.stack : 'Unknown error');
+    console.error('Error message:', error instanceof Error ? error.message : String(error));
+
     return NextResponse.json(
-      { error: 'Chyba při vytváření magic link' },
+      {
+        error: 'Chyba při vytváření magic link',
+        details: error instanceof Error ? error.message : String(error),
+        // V development módu ukázat více detailů
+        ...(process.env.NODE_ENV === 'development' && {
+          stack: error instanceof Error ? error.stack : undefined
+        })
+      },
       { status: 500 }
     );
   }
