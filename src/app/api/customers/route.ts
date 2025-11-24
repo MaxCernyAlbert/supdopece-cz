@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import fs from 'fs/promises';
 import path from 'path';
 
+// Force dynamic rendering
+export const dynamic = 'force-dynamic';
+
 const TOKENS_FILE = path.join(process.cwd(), 'data', 'magic-tokens.json');
 
 interface Customer {
