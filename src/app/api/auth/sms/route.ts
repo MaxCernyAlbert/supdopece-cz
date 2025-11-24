@@ -1,65 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
-import fs from 'fs/promises';
-import path from 'path';
-import crypto from 'crypto';
-
-const TOKENS_FILE = path.join(process.cwd(), 'data', 'magic-tokens.json');
-const SMS_CODES_FILE = path.join(process.cwd(), 'data', 'sms-codes.json');
-
-interface Customer {
-  name: string;
-  email: string;
-  token: string;
-  phone?: string;
-  createdAt: string;
-}
-
-interface SMSCode {
-  phone: string;
-  code: string;
-  customerName: string;
-  customerEmail: string;
-  expiresAt: number;
-}
-
-// Načíst zákazníky
-async function loadTokens(): Promise<Map<string, Customer>> {
-  try {
-    const data = await fs.readFile(TOKENS_FILE, 'utf-8');
-    const tokens = JSON.parse(data);
-    return new Map(Object.entries(tokens));
-  } catch {
-    return new Map();
-  }
-}
-
-// Načíst SMS kódy
-async function loadSMSCodes(): Promise<Map<string, SMSCode>> {
-  try {
-    const data = await fs.readFile(SMS_CODES_FILE, 'utf-8');
-    const codes = JSON.parse(data);
-    return new Map(Object.entries(codes));
-  } catch {
-    return new Map();
-  }
-}
-
-// Uložit SMS kódy
-async function saveSMSCodes(codes: Map<string, SMSCode>) {
-  try {
-    await fs.mkdir(path.dirname(SMS_CODES_FILE), { recursive: true });
-    const obj = Object.fromEntries(codes);
-    await fs.writeFile(SMS_CODES_FILE, JSON.stringify(obj, null, 2));
-  } catch (error) {
-    console.error('Chyba při ukládání SMS kódů:', error);
-  }
-}
+import { getCustomers, getSMSCodes, saveSMSCodes, Customer, SMSCode } from '@/lib/storage';
 
 // Najít zákazníka podle telefonu
 async function findCustomerByPhone(phone: string): Promise<Customer | null> {
-  const tokens = await loadTokens();
+  const customers = await getCustomers();
 
-  for (const customer of Array.from(tokens.values())) {
+  for (const customer of Object.values(customers)) {
     if (customer.phone === phone) {
       return customer;
     }
@@ -138,14 +84,14 @@ export async function POST(request: NextRequest) {
     const expiresAt = Date.now() + 5 * 60 * 1000; // 5 minut
 
     // Uložit kód
-    const smsCodes = await loadSMSCodes();
-    smsCodes.set(normalizedPhone, {
+    const smsCodes = await getSMSCodes();
+    smsCodes[normalizedPhone] = {
       phone: normalizedPhone,
       code,
       customerName: customer.name,
       customerEmail: customer.email,
       expiresAt,
-    });
+    };
     await saveSMSCodes(smsCodes);
 
     // Poslat SMS
@@ -180,8 +126,8 @@ export async function GET(request: NextRequest) {
     const normalizedPhone = phone.replace(/\s+/g, '').replace(/^\+420/, '');
 
     // Načíst kódy
-    const smsCodes = await loadSMSCodes();
-    const smsData = smsCodes.get(normalizedPhone);
+    const smsCodes = await getSMSCodes();
+    const smsData = smsCodes[normalizedPhone];
 
     if (!smsData) {
       return NextResponse.json({ error: 'Neplatný kód' }, { status: 401 });
@@ -189,7 +135,7 @@ export async function GET(request: NextRequest) {
 
     // Zkontrolovat expiraci
     if (Date.now() > smsData.expiresAt) {
-      smsCodes.delete(normalizedPhone);
+      delete smsCodes[normalizedPhone];
       await saveSMSCodes(smsCodes);
       return NextResponse.json({ error: 'Kód vypršel' }, { status: 401 });
     }
@@ -200,7 +146,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Smazat použitý kód
-    smsCodes.delete(normalizedPhone);
+    delete smsCodes[normalizedPhone];
     await saveSMSCodes(smsCodes);
 
     // Najít zákazníka

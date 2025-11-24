@@ -1,40 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import crypto from 'crypto';
-import fs from 'fs/promises';
-import path from 'path';
-
-// Cesta k souboru s tokeny (v produkci použij databázi)
-const TOKENS_FILE = path.join(process.cwd(), 'data', 'magic-tokens.json');
-
-interface Customer {
-  name: string;
-  email: string;
-  phone?: string;
-  token: string;
-  createdAt: string;
-}
-
-// Načtení tokenů ze souboru
-async function loadTokens(): Promise<Map<string, Customer>> {
-  try {
-    const data = await fs.readFile(TOKENS_FILE, 'utf-8');
-    const tokens = JSON.parse(data);
-    return new Map(Object.entries(tokens));
-  } catch {
-    return new Map();
-  }
-}
-
-// Uložení tokenů do souboru
-async function saveTokens(tokens: Map<string, Customer>) {
-  try {
-    await fs.mkdir(path.dirname(TOKENS_FILE), { recursive: true });
-    const obj = Object.fromEntries(tokens);
-    await fs.writeFile(TOKENS_FILE, JSON.stringify(obj, null, 2));
-  } catch (error) {
-    console.error('Chyba při ukládání tokenů:', error);
-  }
-}
+import { getCustomers, saveCustomers, Customer } from '@/lib/storage';
 
 // ADMIN: Vytvoření magic linku
 export async function POST(request: NextRequest) {
@@ -50,7 +15,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Jméno a email jsou povinné' }, { status: 400 });
     }
 
-    const tokens = await loadTokens();
+    const customers = await getCustomers();
 
     // Vytvoření hezkého ID ze jména
     // "Jan Novák" -> "jan-novak"
@@ -64,7 +29,7 @@ export async function POST(request: NextRequest) {
     // Přidat náhodné číslo pokud už existuje
     let token = slug;
     let counter = 1;
-    while (tokens.has(token)) {
+    while (customers[token]) {
       token = `${slug}-${counter}`;
       counter++;
     }
@@ -78,8 +43,8 @@ export async function POST(request: NextRequest) {
       createdAt: new Date().toISOString(),
     };
 
-    tokens.set(token, customer);
-    await saveTokens(tokens);
+    customers[token] = customer;
+    await saveCustomers(customers);
 
     // Magic link URL - hezčí formát
     const magicLink = `${process.env.NEXT_PUBLIC_URL || 'http://localhost:3000'}/u/${token}`;
@@ -109,8 +74,8 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Token chybí' }, { status: 400 });
   }
 
-  const tokens = await loadTokens();
-  const customer = tokens.get(token);
+  const customers = await getCustomers();
+  const customer = customers[token];
 
   if (!customer) {
     return NextResponse.json({ error: 'Neplatný token' }, { status: 401 });

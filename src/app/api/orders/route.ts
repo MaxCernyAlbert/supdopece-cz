@@ -1,21 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server';
-import fs from 'fs/promises';
-import path from 'path';
+import { getOrders, saveOrders } from '@/lib/storage';
 import crypto from 'crypto';
 
-const ORDERS_FILE = path.join(process.cwd(), 'data', 'orders.json');
+interface OrderItem {
+  productId: string;
+  productName: string;
+  quantity: number;
+  price: number;
+}
 
-interface Order {
+interface OrderData {
   id: string;
   customerName: string;
   customerEmail: string;
   customerPhone: string;
-  items: Array<{
-    productId: string;
-    productName: string;
-    quantity: number;
-    price: number;
-  }>;
+  items: OrderItem[];
   totalPrice: number;
   pickupDate: string;
   pickupTime: string;
@@ -25,32 +24,12 @@ interface Order {
   createdAt: string;
 }
 
-// Načíst objednávky
-async function loadOrders(): Promise<Order[]> {
-  try {
-    const data = await fs.readFile(ORDERS_FILE, 'utf-8');
-    return JSON.parse(data);
-  } catch {
-    return [];
-  }
-}
-
-// Uložit objednávky
-async function saveOrders(orders: Order[]) {
-  try {
-    await fs.mkdir(path.dirname(ORDERS_FILE), { recursive: true });
-    await fs.writeFile(ORDERS_FILE, JSON.stringify(orders, null, 2));
-  } catch (error) {
-    console.error('Chyba při ukládání objednávek:', error);
-  }
-}
-
 // Vytvořit novou objednávku
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
 
-    const order: Order = {
+    const order: OrderData = {
       id: `ORD-${Date.now()}-${crypto.randomBytes(4).toString('hex')}`,
       customerName: body.customerName,
       customerEmail: body.customerEmail,
@@ -70,8 +49,12 @@ export async function POST(request: NextRequest) {
       createdAt: new Date().toISOString(),
     };
 
-    const orders = await loadOrders();
-    orders.unshift(order); // Přidat na začátek (nejnovější první)
+    // Načíst existující objednávky
+    const orders = await getOrders();
+
+    // Přidat novou objednávku
+    orders[order.id] = order as any;
+
     await saveOrders(orders);
 
     console.log('🎉 NOVÁ OBJEDNÁVKA:', {
@@ -105,7 +88,13 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Neplatné heslo' }, { status: 401 });
     }
 
-    const orders = await loadOrders();
+    const ordersMap = await getOrders();
+
+    // Převést na pole a seřadit podle data vytvoření (nejnovější první)
+    const orders = Object.values(ordersMap).sort(
+      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    );
+
     return NextResponse.json({ orders });
   } catch (error) {
     console.error('Chyba při načítání objednávek:', error);
