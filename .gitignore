@@ -34,5 +34,5 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-# Data files (obsahují citlivé údaje)
-data/
+# Data files (obsahují citlivé údaje - jen v rootu)
+/data/
