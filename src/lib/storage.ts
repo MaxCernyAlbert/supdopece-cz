@@ -1,9 +1,10 @@
 import fs from 'fs/promises';
 import path from 'path';
+import type { VercelKV } from '@vercel/kv';
 
 // Lazy import KV - importuje se jen když je potřeba
-let kvClient: any = null;
-async function getKV() {
+let kvClient: VercelKV | null = null;
+async function getKV(): Promise<VercelKV> {
   if (!kvClient) {
     const { kv } = await import('@vercel/kv');
     kvClient = kv;
