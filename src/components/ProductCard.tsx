@@ -72,22 +72,12 @@ export function ProductCard({ product, viewMode = 'grid' }: ProductCardProps) {
     );
   }
 
-  // List view
+  // List view - text only, no images
   return (
     <div className={`card ${!product.available ? 'opacity-60' : ''}`}>
-      <div className="flex flex-col sm:flex-row gap-4 p-4">
-        {/* Image placeholder */}
-        <div className="sm:w-32 sm:h-32 h-24 bg-gradient-to-br from-bread-light to-bread-medium flex items-center justify-center flex-shrink-0 rounded-lg">
-          <span className="text-5xl sm:text-4xl">
-            {product.category === 'chleby' && '🍞'}
-            {product.category === 'pecivo' && '🥖'}
-            {product.category === 'sladke' && '🥐'}
-            {product.category === 'slane' && '🥨'}
-          </span>
-        </div>
-
-        {/* Content */}
-        <div className="flex-grow flex flex-col justify-between">
+      <div className="p-4">
+        {/* Content - no image */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
             <div className="flex justify-between items-start mb-2">
               <h3 className="text-lg font-semibold text-bread-dark">{product.name}</h3>
