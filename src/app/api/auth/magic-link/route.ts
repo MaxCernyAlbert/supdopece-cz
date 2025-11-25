@@ -1,6 +1,32 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCustomers, saveCustomers, Customer } from '@/lib/storage';
 
+// Helper function to send email (placeholder - implement with your email provider)
+async function sendMagicLinkEmail(email: string, name: string, magicLink: string): Promise<boolean> {
+  try {
+    // TODO: Implement with Resend, SendGrid, or other email provider
+    console.log(`📧 Sending magic link email to ${email} for ${name}: ${magicLink}`);
+    // For now, just log it
+    return true;
+  } catch (error) {
+    console.error('Failed to send email:', error);
+    return false;
+  }
+}
+
+// Helper function to send SMS (placeholder - implement with your SMS provider)
+async function sendMagicLinkSMS(phone: string, name: string, magicLink: string): Promise<boolean> {
+  try {
+    // TODO: Implement with Twilio, MessageBird, or other SMS provider
+    console.log(`📱 Sending magic link SMS to ${phone} for ${name}: ${magicLink}`);
+    // For now, just log it
+    return true;
+  } catch (error) {
+    console.error('Failed to send SMS:', error);
+    return false;
+  }
+}
+
 // ADMIN: Vytvoření magic linku
 export async function POST(request: NextRequest) {
   try {
@@ -11,8 +37,12 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Neplatné admin heslo' }, { status: 401 });
     }
 
-    if (!name || !email) {
-      return NextResponse.json({ error: 'Jméno a email jsou povinné' }, { status: 400 });
+    if (!name) {
+      return NextResponse.json({ error: 'Jméno je povinné' }, { status: 400 });
+    }
+
+    if (!email && !phone) {
+      return NextResponse.json({ error: 'Vyplňte alespoň email nebo telefon' }, { status: 400 });
     }
 
     const customers = await getCustomers();
@@ -37,7 +67,7 @@ export async function POST(request: NextRequest) {
     // Uložení zákazníka (bez expirace - platí navždy)
     const customer: Customer = {
       name,
-      email,
+      email: email || undefined,
       phone: phone || undefined,
       token,
       createdAt: new Date().toISOString(),
@@ -49,13 +79,27 @@ export async function POST(request: NextRequest) {
     // Magic link URL - hezčí formát
     const magicLink = `${process.env.NEXT_PUBLIC_URL || 'http://localhost:3000'}/u/${token}`;
 
-    console.log('Vytvořen trvalý magic link pro:', name, email);
+    // Send magic link via available channels
+    let emailSent = false;
+    let smsSent = false;
+
+    if (email) {
+      emailSent = await sendMagicLinkEmail(email, name, magicLink);
+    }
+
+    if (phone) {
+      smsSent = await sendMagicLinkSMS(phone, name, magicLink);
+    }
+
+    console.log('Vytvořen trvalý magic link pro:', name, email || phone);
 
     return NextResponse.json({
       success: true,
       message: 'Magic link vytvořen',
       magicLink,
       customer,
+      emailSent,
+      smsSent,
     });
   } catch (error) {
     console.error('Chyba při generování magic link:', error);

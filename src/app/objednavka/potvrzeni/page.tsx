@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { config } from '@/data/config';
 import { useSearchParams } from 'next/navigation';
 import { Suspense } from 'react';
+import { formatPrice } from '@/lib/utils';
 
 function OrderConfirmationContent() {
   const searchParams = useSearchParams();
@@ -104,7 +105,7 @@ function OrderConfirmationContent() {
             <div className="text-left bg-white rounded-lg p-4 text-sm">
               <div className="grid grid-cols-2 gap-2">
                 <span className="text-gray-600">Částka:</span>
-                <span className="font-semibold">{amount} Kč</span>
+                <span className="font-semibold">{amount && formatPrice(Number(amount))}&nbsp;Kč</span>
 
                 <span className="text-gray-600">Číslo účtu:</span>
                 <span className="font-semibold">{config.qrPayment.accountNumber}</span>

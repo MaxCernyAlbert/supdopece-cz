@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { useCartStore } from '@/store/cartStore';
 import { DateTimePicker } from '@/components/DateTimePicker';
 import { config } from '@/data/config';
-import { formatDate } from '@/lib/utils';
+import { formatDate, formatPrice } from '@/lib/utils';
 
 type PaymentMethod = 'card' | 'onPickup' | 'qrCode';
 
@@ -36,14 +36,14 @@ export default function OrderPage() {
   useEffect(() => {
     const userName = localStorage.getItem('userName');
     const userEmail = localStorage.getItem('userEmail');
+    const userPhone = localStorage.getItem('userPhone');
 
-    if (userName && userEmail) {
-      setCustomerInfo((prev) => ({
-        ...prev,
-        name: userName,
-        email: userEmail,
-      }));
-    }
+    setCustomerInfo((prev) => ({
+      ...prev,
+      name: userName || prev.name,
+      email: userEmail || prev.email,
+      phone: userPhone || prev.phone,
+    }));
   }, []);
 
   // Redirect if cart is empty
@@ -67,7 +67,7 @@ export default function OrderPage() {
   };
 
   const isStep1Valid = pickupDate && pickupTime;
-  const isStep2Valid = customerInfo.name && customerInfo.email && customerInfo.phone;
+  const isStep2Valid = customerInfo.name && (customerInfo.email || customerInfo.phone);
 
   const handleSubmit = async () => {
     if (!isStep1Valid || !isStep2Valid) return;
@@ -190,7 +190,7 @@ export default function OrderPage() {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    E-mail *
+                    E-mail
                   </label>
                   <input
                     type="email"
@@ -202,7 +202,7 @@ export default function OrderPage() {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Telefon *
+                    Telefon
                   </label>
                   <input
                     type="tel"
@@ -212,6 +212,9 @@ export default function OrderPage() {
                     placeholder="+420 123 456 789"
                   />
                 </div>
+                <p className="text-sm text-gray-600">
+                  * Vyplňte alespoň jeden kontakt (email nebo telefon)
+                </p>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Poznámka k objednávce
@@ -323,7 +326,7 @@ export default function OrderPage() {
                   <span>
                     {item.quantity}x {item.product.name}
                   </span>
-                  <span>{item.product.price * item.quantity} Kč</span>
+                  <span>{formatPrice(item.product.price * item.quantity)}&nbsp;Kč</span>
                 </div>
               ))}
             </div>
@@ -331,14 +334,15 @@ export default function OrderPage() {
             <div className="border-t pt-4">
               <div className="flex justify-between font-bold text-lg">
                 <span>Celkem</span>
-                <span className="text-primary-600">{totalPrice} Kč</span>
+                <span className="text-primary-600">{formatPrice(totalPrice)}&nbsp;Kč</span>
               </div>
             </div>
 
             {pickupDate && pickupTime && (
               <div className="mt-4 p-3 bg-primary-50 rounded-lg">
                 <p className="text-sm font-medium text-primary-700">
-                  📅 Vyzvednutí: {formatDate(pickupDate)} v {pickupTime}
+                  📅 Vyzvednutí:<br />
+                  {formatDate(pickupDate)} v {pickupTime}
                 </p>
               </div>
             )}

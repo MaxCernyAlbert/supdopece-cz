@@ -7,45 +7,108 @@ import { saveAdminSession, getAdminSession, clearAdminSession } from '@/lib/admi
 
 interface Customer {
   name: string;
-  email: string;
+  email?: string;
   phone?: string;
   token: string;
   createdAt: string;
+}
+
+interface Order {
+  id: string;
+  customerName: string;
+  customerEmail?: string;
+  customerPhone?: string;
+  totalPrice: number;
+  createdAt: string;
+}
+
+interface CustomerStats {
+  totalOrders: number;
+  ordersThisYear: number;
+  ordersThisMonth: number;
+  totalSpent: number;
 }
 
 export default function CustomersPage() {
   const [adminPassword, setAdminPassword] = useState('');
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [customers, setCustomers] = useState<Customer[]>([]);
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [customerStats, setCustomerStats] = useState<Record<string, CustomerStats>>({});
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
+
+  // Edit modal state
+  const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
+  const [editForm, setEditForm] = useState({ name: '', email: '', phone: '' });
+  const [isSaving, setIsSaving] = useState(false);
 
   // Auto-login if session exists
   useEffect(() => {
     const sessionPassword = getAdminSession();
     if (sessionPassword) {
       setAdminPassword(sessionPassword);
-      // Trigger auto-login
       handleLoginWithPassword(sessionPassword);
     }
   }, []);
+
+  // Calculate customer stats when orders change
+  useEffect(() => {
+    if (orders.length > 0 && customers.length > 0) {
+      const now = new Date();
+      const currentYear = now.getFullYear();
+      const currentMonth = now.getMonth();
+
+      const stats: Record<string, CustomerStats> = {};
+
+      customers.forEach(customer => {
+        const customerOrders = orders.filter(
+          o => o.customerEmail === customer.email || o.customerPhone === customer.phone
+        );
+
+        stats[customer.token] = {
+          totalOrders: customerOrders.length,
+          ordersThisYear: customerOrders.filter(o => {
+            const orderDate = new Date(o.createdAt);
+            return orderDate.getFullYear() === currentYear;
+          }).length,
+          ordersThisMonth: customerOrders.filter(o => {
+            const orderDate = new Date(o.createdAt);
+            return orderDate.getFullYear() === currentYear && orderDate.getMonth() === currentMonth;
+          }).length,
+          totalSpent: customerOrders.reduce((sum, o) => sum + o.totalPrice, 0),
+        };
+      });
+
+      setCustomerStats(stats);
+    }
+  }, [orders, customers]);
 
   const handleLoginWithPassword = async (password: string) => {
     setIsLoading(true);
     setError('');
 
     try {
-      const res = await fetch(`/api/customers?password=${password}`);
-      const data = await res.json();
+      const [customersRes, ordersRes] = await Promise.all([
+        fetch(`/api/customers?password=${password}`),
+        fetch(`/api/orders?password=${password}`)
+      ]);
 
-      if (res.ok) {
-        setCustomers(data.customers);
+      const customersData = await customersRes.json();
+      const ordersData = await ordersRes.json();
+
+      if (customersRes.ok) {
+        setCustomers(customersData.customers);
         setIsAuthenticated(true);
-        saveAdminSession(password); // Save session on successful login
+        saveAdminSession(password);
       } else {
-        setError(data.error || 'Neplatné heslo');
+        setError(customersData.error || 'Neplatné heslo');
         clearAdminSession();
+      }
+
+      if (ordersRes.ok) {
+        setOrders(ordersData.orders || []);
       }
     } catch (err) {
       setError('Chyba při načítání zákazníků');
@@ -65,12 +128,56 @@ export default function CustomersPage() {
     clearAdminSession();
   };
 
+  const handleEditClick = (customer: Customer) => {
+    setEditingCustomer(customer);
+    setEditForm({
+      name: customer.name,
+      email: customer.email || '',
+      phone: customer.phone || '',
+    });
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editingCustomer) return;
+
+    setIsSaving(true);
+    try {
+      const res = await fetch(`/api/customers/${editingCustomer.token}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          password: adminPassword,
+          name: editForm.name,
+          email: editForm.email || undefined,
+          phone: editForm.phone || undefined,
+        }),
+      });
+
+      if (res.ok) {
+        // Update local state
+        setCustomers(prev => prev.map(c =>
+          c.token === editingCustomer.token
+            ? { ...c, name: editForm.name, email: editForm.email || undefined, phone: editForm.phone || undefined }
+            : c
+        ));
+        setEditingCustomer(null);
+      } else {
+        const data = await res.json();
+        alert(data.error || 'Chyba při ukládání');
+      }
+    } catch {
+      alert('Chyba při komunikaci se serverem');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   // Filtrování zákazníků
   const filteredCustomers = searchTerm
     ? customers.filter(
         (customer) =>
           customer.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          customer.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          customer.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
           customer.phone?.includes(searchTerm)
       )
     : customers;
@@ -106,7 +213,7 @@ export default function CustomersPage() {
                 value={adminPassword}
                 onChange={(e) => setAdminPassword(e.target.value)}
                 className="input-field"
-                placeholder="admin123"
+                placeholder="Zadejte heslo"
                 required
               />
             </div>
@@ -189,71 +296,96 @@ export default function CustomersPage() {
         </div>
       ) : (
         <div className="space-y-4">
-          {filteredCustomers.map((customer) => (
-            <div key={customer.token} className="card p-6">
-              <div className="flex flex-col md:flex-row justify-between gap-4">
-                {/* Levá část - info o zákazníkovi */}
-                <div className="flex-grow">
-                  <div className="flex items-start justify-between mb-3">
-                    <div>
-                      <h3 className="text-lg font-bold text-bread-dark">
-                        {customer.name}
-                      </h3>
-                      <p className="text-sm text-gray-600">✉️ {customer.email}</p>
+          {filteredCustomers.map((customer) => {
+            const stats = customerStats[customer.token] || { totalOrders: 0, ordersThisYear: 0, ordersThisMonth: 0, totalSpent: 0 };
+
+            return (
+              <div key={customer.token} className="card p-6">
+                <div className="flex flex-col md:flex-row justify-between gap-4">
+                  {/* Levá část - info o zákazníkovi */}
+                  <div className="flex-grow">
+                    <div className="flex items-start justify-between mb-3">
+                      <div>
+                        <h3 className="text-lg font-bold text-bread-dark">
+                          {customer.name}
+                        </h3>
+                        {customer.email && (
+                          <p className="text-sm text-gray-600">✉️ {customer.email}</p>
+                        )}
+                        {customer.phone && (
+                          <p className="text-sm text-gray-600">📱 {customer.phone}</p>
+                        )}
+                      </div>
+                      <span className="text-xs text-gray-500">
+                        {formatDateTime(customer.createdAt)}
+                      </span>
+                    </div>
+
+                    {/* Statistiky objednávek */}
+                    <div className="flex flex-wrap gap-2 mb-3">
+                      <span className="bg-blue-100 text-blue-700 text-xs px-3 py-1 rounded-full">
+                        📦 Celkem: {stats.totalOrders} obj.
+                      </span>
+                      <span className="bg-green-100 text-green-700 text-xs px-3 py-1 rounded-full">
+                        📅 Letos: {stats.ordersThisYear}
+                      </span>
+                      <span className="bg-yellow-100 text-yellow-700 text-xs px-3 py-1 rounded-full">
+                        🗓️ Tento měsíc: {stats.ordersThisMonth}
+                      </span>
                       {customer.phone && (
-                        <p className="text-sm text-gray-600">📱 {customer.phone}</p>
+                        <span className="bg-purple-100 text-purple-700 text-xs px-3 py-1 rounded-full">
+                          📱 SMS
+                        </span>
                       )}
                     </div>
-                    <span className="text-xs text-gray-500">
-                      {formatDateTime(customer.createdAt)}
-                    </span>
-                  </div>
 
-                  {/* Přihlašovací metody */}
-                  <div className="flex flex-wrap gap-2 mb-3">
-                    {customer.phone ? (
-                      <span className="bg-green-100 text-green-700 text-xs px-3 py-1 rounded-full">
-                        📱 SMS přihlášení
-                      </span>
-                    ) : (
-                      <span className="bg-gray-100 text-gray-700 text-xs px-3 py-1 rounded-full">
-                        ❌ Bez SMS
-                      </span>
-                    )}
-                    <span className="bg-blue-100 text-blue-700 text-xs px-3 py-1 rounded-full">
-                      🔗 Magic link
-                    </span>
-                  </div>
-
-                  {/* Magic link */}
-                  <div className="bg-gray-50 rounded-lg p-3">
-                    <div className="flex items-center justify-between gap-2">
-                      <div className="flex-grow overflow-hidden">
-                        <p className="text-xs text-gray-500 mb-1">Přihlašovací odkaz:</p>
-                        <code className="text-xs text-gray-800 break-all">
-                          {getCustomerLink(customer.token)}
-                        </code>
-                      </div>
+                    {/* Akce */}
+                    <div className="flex flex-wrap gap-2 mb-3">
+                      <button
+                        onClick={() => handleEditClick(customer)}
+                        className="btn-secondary text-xs py-2 px-3"
+                      >
+                        ✏️ Upravit
+                      </button>
+                      <Link
+                        href={`/admin/objednavky?customer=${encodeURIComponent(customer.email || customer.phone || customer.name)}`}
+                        className="btn-secondary text-xs py-2 px-3"
+                      >
+                        📋 Objednávky
+                      </Link>
                       <button
                         onClick={() => copyToClipboard(getCustomerLink(customer.token))}
-                        className="btn-secondary text-xs py-2 px-3 flex-shrink-0"
+                        className="btn-secondary text-xs py-2 px-3"
                       >
-                        📋 Kopírovat
+                        📋 Kopírovat odkaz
                       </button>
                     </div>
-                  </div>
-                </div>
 
-                {/* Pravá část - ID */}
-                <div className="text-right md:text-left md:min-w-[150px]">
-                  <div className="text-sm text-gray-500 mb-1">ID</div>
-                  <div className="text-sm font-mono text-gray-700 break-all">
-                    {customer.token}
+                    {/* Magic link */}
+                    <div className="bg-gray-50 rounded-lg p-3">
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex-grow overflow-hidden">
+                          <p className="text-xs text-gray-500 mb-1">Přihlašovací odkaz:</p>
+                          <code className="text-xs text-gray-800 break-all">
+                            {getCustomerLink(customer.token)}
+                          </code>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Pravá část - ID a útrata */}
+                  <div className="text-right md:text-left md:min-w-[150px]">
+                    <div className="text-sm text-gray-500 mb-1">Celková útrata</div>
+                    <div className="text-xl font-bold text-primary-600">
+                      {stats.totalSpent.toLocaleString('cs-CZ')}&nbsp;Kč
+                    </div>
+                    <div className="text-xs text-gray-500 mt-2">ID: {customer.token}</div>
                   </div>
                 </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
 
@@ -269,6 +401,76 @@ export default function CustomersPage() {
           </Link>
         </div>
       </div>
+
+      {/* Edit Modal */}
+      {editingCustomer && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+          <div className="card p-6 max-w-md w-full">
+            <h2 className="text-xl font-bold text-bread-dark mb-4">
+              ✏️ Upravit zákazníka
+            </h2>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Jméno *
+                </label>
+                <input
+                  type="text"
+                  value={editForm.name}
+                  onChange={(e) => setEditForm(prev => ({ ...prev, name: e.target.value }))}
+                  className="input-field"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Email
+                </label>
+                <input
+                  type="email"
+                  value={editForm.email}
+                  onChange={(e) => setEditForm(prev => ({ ...prev, email: e.target.value }))}
+                  className="input-field"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Telefon
+                </label>
+                <input
+                  type="tel"
+                  value={editForm.phone}
+                  onChange={(e) => setEditForm(prev => ({ ...prev, phone: e.target.value }))}
+                  className="input-field"
+                />
+              </div>
+
+              <p className="text-sm text-gray-600">
+                * Vyplňte alespoň jeden kontakt (email nebo telefon)
+              </p>
+            </div>
+
+            <div className="flex gap-3 mt-6">
+              <button
+                onClick={handleSaveEdit}
+                disabled={isSaving || !editForm.name || (!editForm.email && !editForm.phone)}
+                className="btn-primary flex-1"
+              >
+                {isSaving ? '⏳ Ukládám...' : '💾 Uložit'}
+              </button>
+              <button
+                onClick={() => setEditingCustomer(null)}
+                className="btn-secondary flex-1"
+              >
+                Zrušit
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -1,19 +1,74 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { saveAdminSession, getAdminSession, clearAdminSession } from '@/lib/adminAuth';
 
 export default function AdminPage() {
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isCheckingAuth, setIsCheckingAuth] = useState(true);
   const [adminPassword, setAdminPassword] = useState('');
   const [customerName, setCustomerName] = useState('');
   const [customerEmail, setCustomerEmail] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [loginError, setLoginError] = useState('');
   const [result, setResult] = useState<{
     success: boolean;
     magicLink?: string;
+    emailSent?: boolean;
+    smsSent?: boolean;
     error?: string;
   } | null>(null);
+
+  // Check for existing session on mount
+  useEffect(() => {
+    const checkAuth = async () => {
+      const savedPassword = getAdminSession();
+      if (savedPassword) {
+        // Verify the saved password is still valid
+        try {
+          const res = await fetch(`/api/customers?password=${savedPassword}`);
+          if (res.ok) {
+            setAdminPassword(savedPassword);
+            setIsAuthenticated(true);
+          } else {
+            clearAdminSession();
+          }
+        } catch {
+          clearAdminSession();
+        }
+      }
+      setIsCheckingAuth(false);
+    };
+    checkAuth();
+  }, []);
+
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoginError('');
+    setIsLoading(true);
+
+    try {
+      const res = await fetch(`/api/customers?password=${adminPassword}`);
+      if (res.ok) {
+        saveAdminSession(adminPassword);
+        setIsAuthenticated(true);
+      } else {
+        setLoginError('Nesprávné heslo');
+      }
+    } catch {
+      setLoginError('Chyba při ověřování');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleLogout = () => {
+    clearAdminSession();
+    setIsAuthenticated(false);
+    setAdminPassword('');
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -26,8 +81,8 @@ export default function AdminPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           name: customerName,
-          email: customerEmail,
-          phone: customerPhone,
+          email: customerEmail || undefined,
+          phone: customerPhone || undefined,
           adminPassword,
         }),
       });
@@ -38,6 +93,8 @@ export default function AdminPage() {
         setResult({
           success: true,
           magicLink: data.magicLink,
+          emailSent: data.emailSent,
+          smsSent: data.smsSent,
         });
         // Vyčistit formulář
         setCustomerName('');
@@ -49,7 +106,7 @@ export default function AdminPage() {
           error: data.error || 'Chyba při vytváření linku',
         });
       }
-    } catch (error) {
+    } catch {
       setResult({
         success: false,
         error: 'Chyba při komunikaci se serverem',
@@ -64,37 +121,97 @@ export default function AdminPage() {
     alert('Odkaz zkopírován!');
   };
 
-  return (
-    <div className="container mx-auto px-4 py-16 max-w-2xl">
-      <div className="card p-8">
-        <div className="text-center mb-6">
-          <span className="text-6xl">👨‍💼</span>
-          <h1 className="text-3xl font-bold text-bread-dark mt-4 mb-2">
-            Admin Panel
-          </h1>
-          <p className="text-gray-600">
-            Vytvoř trvalý přístupový odkaz pro zákazníka
-          </p>
+  // Loading state
+  if (isCheckingAuth) {
+    return (
+      <div className="container mx-auto px-4 py-16 max-w-md">
+        <div className="card p-8 text-center">
+          <span className="text-4xl">⏳</span>
+          <p className="mt-4 text-gray-600">Ověřuji přístup...</p>
         </div>
+      </div>
+    );
+  }
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Admin heslo
-            </label>
-            <input
-              type="password"
-              value={adminPassword}
-              onChange={(e) => setAdminPassword(e.target.value)}
-              className="input-field"
-              placeholder="admin123"
-              required
-            />
-            <p className="text-xs text-gray-500 mt-1">
-              Výchozí heslo: <code>admin123</code> (změň v produkci!)
+  // Login form - show first before any admin content
+  if (!isAuthenticated) {
+    return (
+      <div className="container mx-auto px-4 py-16 max-w-md">
+        <div className="card p-8">
+          <div className="text-center mb-6">
+            <span className="text-6xl">🔐</span>
+            <h1 className="text-3xl font-bold text-bread-dark mt-4 mb-2">
+              Admin Panel
+            </h1>
+            <p className="text-gray-600">
+              Pro přístup zadejte heslo
             </p>
           </div>
 
+          <form onSubmit={handleLogin} className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Heslo
+              </label>
+              <input
+                type="password"
+                value={adminPassword}
+                onChange={(e) => setAdminPassword(e.target.value)}
+                className="input-field"
+                placeholder="Zadejte admin heslo"
+                required
+                autoFocus
+              />
+            </div>
+
+            {loginError && (
+              <div className="bg-red-50 border border-red-200 rounded-lg p-3">
+                <p className="text-red-800 text-sm">{loginError}</p>
+              </div>
+            )}
+
+            <button
+              type="submit"
+              disabled={isLoading}
+              className="btn-primary w-full"
+            >
+              {isLoading ? '⏳ Ověřuji...' : '🔓 Přihlásit se'}
+            </button>
+          </form>
+
+          <div className="mt-6 text-center">
+            <Link href="/" className="text-sm text-gray-500 hover:text-primary-600">
+              ← Zpět na hlavní stránku
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Authenticated - show full admin panel
+  return (
+    <div className="container mx-auto px-4 py-16 max-w-2xl">
+      <div className="card p-8">
+        <div className="flex justify-between items-start mb-6">
+          <div className="text-center flex-grow">
+            <span className="text-6xl">👨‍💼</span>
+            <h1 className="text-3xl font-bold text-bread-dark mt-4 mb-2">
+              Admin Panel
+            </h1>
+            <p className="text-gray-600">
+              Vytvoř trvalý přístupový odkaz pro zákazníka
+            </p>
+          </div>
+          <button
+            onClick={handleLogout}
+            className="text-sm text-gray-500 hover:text-red-600"
+          >
+            🚪 Odhlásit
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="space-y-4">
           <div className="border-t pt-4">
             <h3 className="font-medium text-gray-700 mb-3">Nový zákazník</h3>
 
@@ -115,7 +232,7 @@ export default function AdminPage() {
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Email zákazníka *
+                  Email zákazníka
                 </label>
                 <input
                   type="email"
@@ -123,13 +240,15 @@ export default function AdminPage() {
                   onChange={(e) => setCustomerEmail(e.target.value)}
                   className="input-field"
                   placeholder="jan@email.cz"
-                  required
                 />
+                <p className="text-xs text-gray-500 mt-1">
+                  Pokud vyplníte, pošle se magic link na email
+                </p>
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Telefon zákazníka (pro SMS přihlášení)
+                  Telefon zákazníka
                 </label>
                 <input
                   type="tel"
@@ -139,18 +258,22 @@ export default function AdminPage() {
                   placeholder="777 123 456"
                 />
                 <p className="text-xs text-gray-500 mt-1">
-                  Pokud vyplníte, zákazník se může přihlásit přes SMS kód
+                  Pokud vyplníte, pošle se magic link přes SMS
                 </p>
               </div>
+
+              <p className="text-sm text-gray-600 bg-blue-50 p-3 rounded-lg">
+                * Vyplňte alespoň jeden kontakt (email nebo telefon). Magic link se pošle na všechny vyplněné kontakty.
+              </p>
             </div>
           </div>
 
           <button
             type="submit"
-            disabled={isLoading}
+            disabled={isLoading || (!customerEmail && !customerPhone)}
             className="btn-primary w-full"
           >
-            {isLoading ? '⏳ Vytvářím...' : '🔗 Vytvořit trvalý odkaz'}
+            {isLoading ? '⏳ Vytvářím...' : '🔗 Vytvořit a odeslat odkaz'}
           </button>
         </form>
 
@@ -167,6 +290,11 @@ export default function AdminPage() {
                     <p className="text-sm text-green-700">
                       Tento odkaz je <strong>trvalý</strong> a nikdy nevyprší.
                     </p>
+                    {(result.emailSent || result.smsSent) && (
+                      <p className="text-sm text-green-700 mt-1">
+                        Odesláno: {result.emailSent && '📧 Email'} {result.emailSent && result.smsSent && '+'} {result.smsSent && '📱 SMS'}
+                      </p>
+                    )}
                   </div>
                 </div>
 
@@ -186,8 +314,8 @@ export default function AdminPage() {
 
                 <div className="mt-3 p-3 bg-blue-50 rounded">
                   <p className="text-xs text-blue-800">
-                    💡 <strong>Tip:</strong> Pošli tento odkaz zákazníkovi přes WhatsApp,
-                    email nebo SMS. Může si ho uložit na plochu telefonu jako aplikaci.
+                    💡 <strong>Tip:</strong> Odkaz byl automaticky odeslán zákazníkovi.
+                    Může si ho uložit na plochu telefonu jako aplikaci.
                   </p>
                 </div>
               </div>
@@ -205,11 +333,11 @@ export default function AdminPage() {
         <div className="mt-6 pt-6 border-t">
           <h3 className="font-medium text-gray-700 mb-2">Jak to funguje?</h3>
           <ol className="text-sm text-gray-600 space-y-1 list-decimal list-inside">
-            <li>Vytvoříš trvalý odkaz pro zákazníka</li>
-            <li>Pošleš mu odkaz (WhatsApp, email, SMS)</li>
+            <li>Vyplníš jméno a email/telefon zákazníka</li>
+            <li>Systém vytvoří odkaz a pošle ho zákazníkovi</li>
             <li>Zákazník klikne → je automaticky přihlášený</li>
             <li>Může si uložit web jako aplikaci na telefon</li>
-            <li>U každé objednávky uvidíš jeho jméno a email</li>
+            <li>U každé objednávky uvidíš jeho jméno a kontakt</li>
           </ol>
         </div>
 

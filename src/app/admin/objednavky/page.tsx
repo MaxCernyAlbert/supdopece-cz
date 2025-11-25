@@ -1,8 +1,9 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { formatDate, formatDateTime } from '@/lib/utils';
+import { formatDate, formatDateTime, formatPrice } from '@/lib/utils';
 import { saveAdminSession, getAdminSession, clearAdminSession } from '@/lib/adminAuth';
 
 interface Order {
@@ -44,6 +45,7 @@ const statusLabels = {
 };
 
 export default function OrdersPage() {
+  const searchParams = useSearchParams();
   const [adminPassword, setAdminPassword] = useState('');
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [orders, setOrders] = useState<Order[]>([]);
@@ -51,6 +53,14 @@ export default function OrdersPage() {
   const [error, setError] = useState('');
   const [filterCustomer, setFilterCustomer] = useState('');
   const [filterPickupDate, setFilterPickupDate] = useState('');
+
+  // Load customer filter from URL params
+  useEffect(() => {
+    const customerParam = searchParams.get('customer');
+    if (customerParam) {
+      setFilterCustomer(customerParam);
+    }
+  }, [searchParams]);
 
   // Auto-login if session exists
   useEffect(() => {
@@ -100,7 +110,8 @@ export default function OrdersPage() {
   const filteredOrders = orders.filter((order) => {
     const matchesCustomer = !filterCustomer ||
       order.customerName.toLowerCase().includes(filterCustomer.toLowerCase()) ||
-      order.customerEmail.toLowerCase().includes(filterCustomer.toLowerCase());
+      order.customerEmail?.toLowerCase().includes(filterCustomer.toLowerCase()) ||
+      order.customerPhone?.includes(filterCustomer);
 
     const matchesPickupDate = !filterPickupDate ||
       order.pickupDate === filterPickupDate;
@@ -110,6 +121,26 @@ export default function OrdersPage() {
 
   // Get unique pickup dates for filter dropdown
   const uniquePickupDates = Array.from(new Set(orders.map(o => o.pickupDate))).sort();
+
+  // Sort filtered orders by pickup time when date filter is active
+  const sortedFilteredOrders = filterPickupDate
+    ? [...filteredOrders].sort((a, b) => a.pickupTime.localeCompare(b.pickupTime))
+    : filteredOrders;
+
+  // Product summary for selected date
+  const productSummary = filterPickupDate
+    ? sortedFilteredOrders
+        .filter(o => o.status !== 'cancelled')
+        .flatMap(o => o.items)
+        .reduce((acc, item) => {
+          const key = item.productName;
+          if (!acc[key]) {
+            acc[key] = { name: item.productName, quantity: 0 };
+          }
+          acc[key].quantity += item.quantity;
+          return acc;
+        }, {} as Record<string, { name: string; quantity: number }>)
+    : null;
 
   // Statistiky
   const totalOrders = orders.length;
@@ -191,7 +222,7 @@ export default function OrdersPage() {
         </div>
         <div className="card p-6">
           <div className="text-sm text-gray-500 mb-1">Celkový obrat</div>
-          <div className="text-3xl font-bold text-primary-600">{totalRevenue} Kč</div>
+          <div className="text-3xl font-bold text-primary-600">{formatPrice(totalRevenue)}&nbsp;Kč</div>
         </div>
         <div className="card p-6">
           <div className="text-sm text-gray-500 mb-1">Nové objednávky</div>
@@ -224,8 +255,37 @@ export default function OrdersPage() {
         </div>
       </div>
 
+      {/* Product summary for selected date */}
+      {filterPickupDate && productSummary && Object.keys(productSummary).length > 0 && (
+        <div className="card p-6 mb-6 bg-yellow-50 border-2 border-yellow-200">
+          <h2 className="text-lg font-bold text-yellow-800 mb-4">
+            🥖 Přehled produktů k přípravě na {formatDate(filterPickupDate)}
+          </h2>
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+            {Object.values(productSummary)
+              .sort((a, b) => b.quantity - a.quantity)
+              .map((item) => (
+                <div
+                  key={item.name}
+                  className="bg-white rounded-lg p-3 border border-yellow-300"
+                >
+                  <div className="text-2xl font-bold text-primary-600">
+                    {item.quantity}x
+                  </div>
+                  <div className="text-sm text-gray-700 font-medium">
+                    {item.name}
+                  </div>
+                </div>
+              ))}
+          </div>
+          <p className="text-sm text-yellow-700 mt-4">
+            Celkem {sortedFilteredOrders.filter(o => o.status !== 'cancelled').length} objednávek seřazených podle času vyzvednutí
+          </p>
+        </div>
+      )}
+
       {/* Seznam objednávek */}
-      {filteredOrders.length === 0 ? (
+      {sortedFilteredOrders.length === 0 ? (
         <div className="card p-8 text-center">
           <p className="text-gray-500">
             {filterCustomer ? 'Žádné objednávky nenalezeny' : 'Zatím žádné objednávky'}
@@ -233,7 +293,7 @@ export default function OrdersPage() {
         </div>
       ) : (
         <div className="space-y-4">
-          {filteredOrders.map((order) => (
+          {sortedFilteredOrders.map((order) => (
             <div key={order.id} className="card p-6">
               <div className="flex flex-col md:flex-row justify-between gap-4">
                 {/* Levá část - info o objednávce */}
@@ -257,7 +317,7 @@ export default function OrdersPage() {
                     </div>
                     {order.items.map((item, idx) => (
                       <div key={idx} className="text-sm text-gray-600">
-                        {item.quantity}x {item.productName} - {item.price * item.quantity} Kč
+                        {item.quantity}x {item.productName} - {formatPrice(item.price * item.quantity)}&nbsp;Kč
                       </div>
                     ))}
                   </div>
@@ -285,7 +345,7 @@ export default function OrdersPage() {
                 <div className="text-right md:text-left md:min-w-[150px]">
                   <div className="text-sm text-gray-500 mb-1">Celkem</div>
                   <div className="text-2xl font-bold text-primary-600">
-                    {order.totalPrice} Kč
+                    {formatPrice(order.totalPrice)}&nbsp;Kč
                   </div>
                   <div className="text-xs text-gray-500 mt-1">{order.id}</div>
                 </div>
