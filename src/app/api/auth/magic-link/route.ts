@@ -140,5 +140,6 @@ export async function GET(request: NextRequest) {
     valid: true,
     name: customer.name,
     email: customer.email,
+    phone: customer.phone,
   });
 }

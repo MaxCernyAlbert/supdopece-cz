@@ -172,6 +172,25 @@ export default function CustomersPage() {
     }
   };
 
+  const handleDeleteCustomer = async (customer: Customer) => {
+    if (!confirm(`Opravdu chcete smazat zákazníka "${customer.name}"?`)) return;
+
+    try {
+      const res = await fetch(`/api/customers/${customer.token}?password=${adminPassword}`, {
+        method: 'DELETE',
+      });
+
+      if (res.ok) {
+        setCustomers(prev => prev.filter(c => c.token !== customer.token));
+      } else {
+        const data = await res.json();
+        alert(data.error || 'Chyba při mazání');
+      }
+    } catch {
+      alert('Chyba při komunikaci se serverem');
+    }
+  };
+
   // Filtrování zákazníků
   const filteredCustomers = searchTerm
     ? customers.filter(
@@ -348,7 +367,7 @@ export default function CustomersPage() {
                         ✏️ Upravit
                       </button>
                       <Link
-                        href={`/admin/objednavky?customer=${encodeURIComponent(customer.email || customer.phone || customer.name)}`}
+                        href={`/admin/objednavky?customer=${encodeURIComponent(customer.name)}`}
                         className="btn-secondary text-xs py-2 px-3"
                       >
                         📋 Objednávky
@@ -358,6 +377,12 @@ export default function CustomersPage() {
                         className="btn-secondary text-xs py-2 px-3"
                       >
                         📋 Kopírovat odkaz
+                      </button>
+                      <button
+                        onClick={() => handleDeleteCustomer(customer)}
+                        className="text-xs py-2 px-3 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                      >
+                        🗑️ Smazat
                       </button>
                     </div>
 
