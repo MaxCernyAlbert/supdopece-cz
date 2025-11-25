@@ -47,7 +47,6 @@ function OrderConfirmationContent() {
       `SUMMARY:Vyzvednout pečivo - Šup do pece`,
       `LOCATION:${config.address}`,
       `DESCRIPTION:Vyzvednout objednávku ${orderId || ''} - čerstvé pečivo z pekárny Šup do pece`,
-      `URL:${config.website || ''}`,
       'END:VEVENT',
       'END:VCALENDAR',
     ].join('\r\n');
