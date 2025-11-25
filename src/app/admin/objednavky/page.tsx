@@ -48,6 +48,7 @@ function OrdersContent() {
   const searchParams = useSearchParams();
   const [adminPassword, setAdminPassword] = useState('');
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isCheckingSession, setIsCheckingSession] = useState(true);
   const [orders, setOrders] = useState<Order[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
@@ -69,6 +70,8 @@ function OrdersContent() {
       setAdminPassword(sessionPassword);
       // Trigger auto-login
       handleLoginWithPassword(sessionPassword);
+    } else {
+      setIsCheckingSession(false);
     }
   }, []);
 
@@ -93,6 +96,7 @@ function OrdersContent() {
       clearAdminSession();
     } finally {
       setIsLoading(false);
+      setIsCheckingSession(false);
     }
   };
 
@@ -148,6 +152,18 @@ function OrdersContent() {
     .filter((o) => o.status !== 'cancelled')
     .reduce((sum, o) => sum + o.totalPrice, 0);
   const newOrders = orders.filter((o) => o.status === 'new').length;
+
+  // Show loading while checking session
+  if (isCheckingSession) {
+    return (
+      <div className="container mx-auto px-4 py-16 text-center">
+        <div className="card p-8 max-w-md mx-auto">
+          <div className="text-4xl mb-4">⏳</div>
+          <p className="text-gray-600">Načítám...</p>
+        </div>
+      </div>
+    );
+  }
 
   if (!isAuthenticated) {
     return (

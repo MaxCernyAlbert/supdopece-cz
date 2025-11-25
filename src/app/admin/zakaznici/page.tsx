@@ -32,6 +32,7 @@ interface CustomerStats {
 export default function CustomersPage() {
   const [adminPassword, setAdminPassword] = useState('');
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isCheckingSession, setIsCheckingSession] = useState(true);
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
   const [customerStats, setCustomerStats] = useState<Record<string, CustomerStats>>({});
@@ -51,6 +52,8 @@ export default function CustomersPage() {
     if (sessionPassword) {
       setAdminPassword(sessionPassword);
       handleLoginWithPassword(sessionPassword);
+    } else {
+      setIsCheckingSession(false);
     }
   }, []);
 
@@ -116,6 +119,7 @@ export default function CustomersPage() {
       clearAdminSession();
     } finally {
       setIsLoading(false);
+      setIsCheckingSession(false);
     }
   };
 
@@ -238,6 +242,18 @@ export default function CustomersPage() {
   const getCustomerLink = (token: string) => {
     return `${window.location.origin}/u/${token}`;
   };
+
+  // Show loading while checking session
+  if (isCheckingSession) {
+    return (
+      <div className="container mx-auto px-4 py-16 text-center">
+        <div className="card p-8 max-w-md mx-auto">
+          <div className="text-4xl mb-4">⏳</div>
+          <p className="text-gray-600">Načítám...</p>
+        </div>
+      </div>
+    );
+  }
 
   if (!isAuthenticated) {
     return (
