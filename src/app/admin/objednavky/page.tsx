@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { formatDate, formatDateTime, formatPrice } from '@/lib/utils';
@@ -44,7 +44,7 @@ const statusLabels = {
   cancelled: '❌ Zrušená',
 };
 
-export default function OrdersPage() {
+function OrdersContent() {
   const searchParams = useSearchParams();
   const [adminPassword, setAdminPassword] = useState('');
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -355,5 +355,20 @@ export default function OrdersPage() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function OrdersPage() {
+  return (
+    <Suspense fallback={
+      <div className="container mx-auto px-4 py-16 max-w-md">
+        <div className="card p-8 text-center">
+          <span className="text-4xl">⏳</span>
+          <p className="mt-4 text-gray-600">Načítám...</p>
+        </div>
+      </div>
+    }>
+      <OrdersContent />
+    </Suspense>
   );
 }
