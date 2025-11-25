@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PWA Icon Generator - Šup do pece</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      max-width: 800px;
+      margin: 50px auto;
+      padding: 20px;
+      background: #f5e6d3;
+    }
+    .container {
+      background: white;
+      padding: 40px;
+      border-radius: 12px;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    }
+    h1 {
+      color: #8b5a2b;
+      margin-bottom: 10px;
+    }
+    .subtitle {
+      color: #666;
+      margin-bottom: 30px;
+    }
+    .preview {
+      display: flex;
+      gap: 30px;
+      margin: 30px 0;
+      flex-wrap: wrap;
+    }
+    .preview-item {
+      text-align: center;
+    }
+    canvas {
+      border: 2px solid #ddd;
+      border-radius: 8px;
+    }
+    button {
+      background: #8b5a2b;
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 16px;
+      margin: 10px 5px;
+      transition: background 0.2s;
+    }
+    button:hover {
+      background: #704820;
+    }
+    .info {
+      background: #e3f2fd;
+      padding: 15px;
+      border-radius: 6px;
+      margin: 20px 0;
+      border-left: 4px solid #2196f3;
+    }
+    .success {
+      background: #e8f5e9;
+      padding: 15px;
+      border-radius: 6px;
+      margin: 20px 0;
+      border-left: 4px solid #4caf50;
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🍞 PWA Icon Generator</h1>
+    <p class="subtitle">Generátor ikon pro Šup do pece</p>
+
+    <div class="info">
+      <strong>ℹ️ Jak to funguje:</strong>
+      <ol>
+        <li>Klikni na "Generovat ikony" níže</li>
+        <li>Uvidíš náhled obou ikon</li>
+        <li>Stáhni obě ikony (192×192 a 512×512)</li>
+        <li>Umísti je do složky <code>/public/</code> v projektu</li>
+      </ol>
+    </div>
+
+    <button onclick="generateIcons()" style="font-size: 18px; padding: 15px 30px;">
+      🎨 Generovat ikony
+    </button>
+
+    <div class="preview" id="preview" style="display: none;">
+      <div class="preview-item">
+        <h3>192×192 px</h3>
+        <canvas id="canvas192" width="192" height="192"></canvas>
+        <br>
+        <button onclick="downloadIcon(192)">⬇️ Stáhnout icon-192.png</button>
+      </div>
+      <div class="preview-item">
+        <h3>512×512 px</h3>
+        <canvas id="canvas512" width="512" height="512"></canvas>
+        <br>
+        <button onclick="downloadIcon(512)">⬇️ Stáhnout icon-512.png</button>
+      </div>
+    </div>
+
+    <div class="success" id="success">
+      <strong>✅ Ikony vygenerovány!</strong><br>
+      Stáhni obě ikony a umísti je do <code>/public/icon-192.png</code> a <code>/public/icon-512.png</code>
+    </div>
+  </div>
+
+  <script>
+    function generateIcons() {
+      drawIcon(192);
+      drawIcon(512);
+      document.getElementById('preview').style.display = 'flex';
+      document.getElementById('success').style.display = 'block';
+    }
+
+    function drawIcon(size) {
+      const canvas = document.getElementById(`canvas${size}`);
+      const ctx = canvas.getContext('2d');
+
+      // Background - bread color gradient
+      const gradient = ctx.createLinearGradient(0, 0, size, size);
+      gradient.addColorStop(0, '#f5e6d3');
+      gradient.addColorStop(1, '#d4b896');
+      ctx.fillStyle = gradient;
+      ctx.fillRect(0, 0, size, size);
+
+      // Draw bread emoji or simple bread shape
+      const fontSize = size * 0.6;
+      ctx.font = `${fontSize}px Arial`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('🍞', size / 2, size / 2);
+
+      // Add brand name if there's space (only on 512px)
+      if (size === 512) {
+        ctx.font = 'bold 60px Arial';
+        ctx.fillStyle = '#8b5a2b';
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 8;
+        ctx.strokeText('ŠUP DO PECE', size / 2, size - 80);
+        ctx.fillText('ŠUP DO PECE', size / 2, size - 80);
+      }
+
+      // Add border
+      ctx.strokeStyle = '#8b5a2b';
+      ctx.lineWidth = size * 0.02;
+      ctx.strokeRect(0, 0, size, size);
+    }
+
+    function downloadIcon(size) {
+      const canvas = document.getElementById(`canvas${size}`);
+      const link = document.createElement('a');
+      link.download = `icon-${size}.png`;
+      link.href = canvas.toDataURL('image/png');
+      link.click();
+    }
+  </script>
+</body>
+</html>
