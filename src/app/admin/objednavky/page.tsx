@@ -46,13 +46,17 @@ const statusLabels = {
 
 function OrdersContent() {
   const searchParams = useSearchParams();
-  const [adminPassword, setAdminPassword] = useState('');
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [isCheckingSession, setIsCheckingSession] = useState(true);
+
+  // Check session synchronously on init
+  const initialSession = typeof window !== 'undefined' ? getAdminSession() : null;
+  const initialCustomer = typeof window !== 'undefined' ? searchParams.get('customer') || '' : '';
+
+  const [adminPassword, setAdminPassword] = useState(initialSession || '');
+  const [isAuthenticated, setIsAuthenticated] = useState(!!initialSession);
   const [orders, setOrders] = useState<Order[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(!!initialSession);
   const [error, setError] = useState('');
-  const [filterCustomer, setFilterCustomer] = useState('');
+  const [filterCustomer, setFilterCustomer] = useState(initialCustomer);
   const [filterPickupDate, setFilterPickupDate] = useState('');
 
   // Load customer filter from URL params
@@ -67,11 +71,7 @@ function OrdersContent() {
   useEffect(() => {
     const sessionPassword = getAdminSession();
     if (sessionPassword) {
-      setAdminPassword(sessionPassword);
-      // Trigger auto-login
       handleLoginWithPassword(sessionPassword);
-    } else {
-      setIsCheckingSession(false);
     }
   }, []);
 
@@ -96,7 +96,6 @@ function OrdersContent() {
       clearAdminSession();
     } finally {
       setIsLoading(false);
-      setIsCheckingSession(false);
     }
   };
 
@@ -146,24 +145,13 @@ function OrdersContent() {
         }, {} as Record<string, { name: string; quantity: number }>)
     : null;
 
-  // Statistiky
-  const totalOrders = orders.length;
-  const totalRevenue = orders
+  // Statistiky - použít filtrované objednávky
+  const statsOrders = filterCustomer ? filteredOrders : orders;
+  const totalOrders = statsOrders.length;
+  const totalRevenue = statsOrders
     .filter((o) => o.status !== 'cancelled')
     .reduce((sum, o) => sum + o.totalPrice, 0);
-  const newOrders = orders.filter((o) => o.status === 'new').length;
-
-  // Show loading while checking session
-  if (isCheckingSession) {
-    return (
-      <div className="container mx-auto px-4 py-16 text-center">
-        <div className="card p-8 max-w-md mx-auto">
-          <div className="text-4xl mb-4">⏳</div>
-          <p className="text-gray-600">Načítám...</p>
-        </div>
-      </div>
-    );
-  }
+  const newOrders = statsOrders.filter((o) => o.status === 'new').length;
 
   if (!isAuthenticated) {
     return (

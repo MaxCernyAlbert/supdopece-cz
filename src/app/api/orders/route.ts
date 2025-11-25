@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getOrders, saveOrders } from '@/lib/storage';
+import { sendOrderConfirmationEmail } from '@/lib/email';
+import { sendOrderConfirmationSMS } from '@/lib/sms';
 import crypto from 'crypto';
 
 interface OrderItem {
@@ -65,9 +67,43 @@ export async function POST(request: NextRequest) {
       vyzvednutí: `${order.pickupDate} v ${order.pickupTime}`,
     });
 
+    // Send confirmation - email has priority, SMS as fallback
+    let emailSent = false;
+    let smsSent = false;
+
+    if (order.customerEmail) {
+      emailSent = await sendOrderConfirmationEmail({
+        orderId: order.id,
+        customerName: order.customerName,
+        customerEmail: order.customerEmail,
+        customerPhone: order.customerPhone,
+        items: order.items,
+        totalPrice: order.totalPrice,
+        pickupDate: order.pickupDate,
+        pickupTime: order.pickupTime,
+        paymentMethod: order.paymentMethod,
+      });
+    }
+
+    // If no email or email failed, and customer has phone, send SMS
+    if (!emailSent && order.customerPhone) {
+      smsSent = await sendOrderConfirmationSMS({
+        orderId: order.id,
+        customerName: order.customerName,
+        customerPhone: order.customerPhone,
+        totalPrice: order.totalPrice,
+        pickupDate: order.pickupDate,
+        pickupTime: order.pickupTime,
+      });
+    }
+
+    console.log(`📬 Potvrzení odesláno: email=${emailSent}, sms=${smsSent}`);
+
     return NextResponse.json({
       success: true,
       order,
+      emailSent,
+      smsSent,
     });
   } catch (error) {
     console.error('Chyba při vytváření objednávky:', error);

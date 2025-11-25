@@ -1,31 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCustomers, saveCustomers, Customer } from '@/lib/storage';
-
-// Helper function to send email (placeholder - implement with your email provider)
-async function sendMagicLinkEmail(email: string, name: string, magicLink: string): Promise<boolean> {
-  try {
-    // TODO: Implement with Resend, SendGrid, or other email provider
-    console.log(`📧 Sending magic link email to ${email} for ${name}: ${magicLink}`);
-    // For now, just log it
-    return true;
-  } catch (error) {
-    console.error('Failed to send email:', error);
-    return false;
-  }
-}
-
-// Helper function to send SMS (placeholder - implement with your SMS provider)
-async function sendMagicLinkSMS(phone: string, name: string, magicLink: string): Promise<boolean> {
-  try {
-    // TODO: Implement with Twilio, MessageBird, or other SMS provider
-    console.log(`📱 Sending magic link SMS to ${phone} for ${name}: ${magicLink}`);
-    // For now, just log it
-    return true;
-  } catch (error) {
-    console.error('Failed to send SMS:', error);
-    return false;
-  }
-}
+import { sendMagicLinkEmail } from '@/lib/email';
+import { sendMagicLinkSMS } from '@/lib/sms';
 
 // ADMIN: Vytvoření magic linku
 export async function POST(request: NextRequest) {

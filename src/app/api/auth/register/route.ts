@@ -1,29 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCustomers, saveCustomers, Customer } from '@/lib/storage';
-
-// Helper function to send email (placeholder - implement with your email provider)
-async function sendWelcomeEmail(email: string, name: string, magicLink: string): Promise<boolean> {
-  try {
-    // TODO: Implement with Resend, SendGrid, or other email provider
-    console.log(`📧 Sending welcome email to ${email} for ${name}: ${magicLink}`);
-    return true;
-  } catch (error) {
-    console.error('Failed to send email:', error);
-    return false;
-  }
-}
-
-// Helper function to send SMS (placeholder - implement with your SMS provider)
-async function sendWelcomeSMS(phone: string, name: string, magicLink: string): Promise<boolean> {
-  try {
-    // TODO: Implement with Twilio, MessageBird, or other SMS provider
-    console.log(`📱 Sending welcome SMS to ${phone} for ${name}: ${magicLink}`);
-    return true;
-  } catch (error) {
-    console.error('Failed to send SMS:', error);
-    return false;
-  }
-}
+import { sendWelcomeEmail } from '@/lib/email';
+import { sendWelcomeSMS } from '@/lib/sms';
 
 // Self-registration endpoint
 export async function POST(request: NextRequest) {
@@ -53,7 +31,7 @@ export async function POST(request: NextRequest) {
       let smsSent = false;
 
       if (email && existingCustomer.email) {
-        emailSent = await sendWelcomeEmail(email, existingCustomer.name, magicLink);
+        emailSent = await sendWelcomeEmail({ email, name: existingCustomer.name, magicLink });
       }
 
       if (phone && existingCustomer.phone) {
@@ -102,7 +80,7 @@ export async function POST(request: NextRequest) {
     let smsSent = false;
 
     if (email) {
-      emailSent = await sendWelcomeEmail(email, name, magicLink);
+      emailSent = await sendWelcomeEmail({ email, name, magicLink });
     }
 
     if (phone) {

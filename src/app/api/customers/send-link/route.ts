@@ -1,18 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCustomers } from '@/lib/storage';
-
-// Helper function to send SMS (placeholder - implement with your SMS provider)
-async function sendMagicLinkSMS(phone: string, name: string, magicLink: string): Promise<boolean> {
-  try {
-    // TODO: Implement with Twilio, MessageBird, or other SMS provider
-    console.log(`📱 Sending magic link SMS to ${phone} for ${name}: ${magicLink}`);
-    // For now, just log it
-    return true;
-  } catch (error) {
-    console.error('Failed to send SMS:', error);
-    return false;
-  }
-}
+import { sendMagicLinkSMS } from '@/lib/sms';
 
 export async function POST(request: NextRequest) {
   try {

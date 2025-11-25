@@ -30,13 +30,15 @@ interface CustomerStats {
 }
 
 export default function CustomersPage() {
-  const [adminPassword, setAdminPassword] = useState('');
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [isCheckingSession, setIsCheckingSession] = useState(true);
+  // Check session synchronously on init
+  const initialSession = typeof window !== 'undefined' ? getAdminSession() : null;
+
+  const [adminPassword, setAdminPassword] = useState(initialSession || '');
+  const [isAuthenticated, setIsAuthenticated] = useState(!!initialSession);
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
   const [customerStats, setCustomerStats] = useState<Record<string, CustomerStats>>({});
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(!!initialSession);
   const [error, setError] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
 
@@ -50,10 +52,7 @@ export default function CustomersPage() {
   useEffect(() => {
     const sessionPassword = getAdminSession();
     if (sessionPassword) {
-      setAdminPassword(sessionPassword);
       handleLoginWithPassword(sessionPassword);
-    } else {
-      setIsCheckingSession(false);
     }
   }, []);
 
@@ -119,7 +118,6 @@ export default function CustomersPage() {
       clearAdminSession();
     } finally {
       setIsLoading(false);
-      setIsCheckingSession(false);
     }
   };
 
@@ -242,18 +240,6 @@ export default function CustomersPage() {
   const getCustomerLink = (token: string) => {
     return `${window.location.origin}/u/${token}`;
   };
-
-  // Show loading while checking session
-  if (isCheckingSession) {
-    return (
-      <div className="container mx-auto px-4 py-16 text-center">
-        <div className="card p-8 max-w-md mx-auto">
-          <div className="text-4xl mb-4">⏳</div>
-          <p className="text-gray-600">Načítám...</p>
-        </div>
-      </div>
-    );
-  }
 
   if (!isAuthenticated) {
     return (
