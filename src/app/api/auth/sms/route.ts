@@ -106,10 +106,10 @@ export async function POST(request: NextRequest) {
     const code = generateCode();
     const expiresAt = Date.now() + 5 * 60 * 1000; // 5 minut
 
-    // Uložit kód
+    // Uložit kód (pod klíčem bez +420 pro konzistenci)
     const smsCodes = await getSMSCodes();
-    smsCodes[normalizedPhone] = {
-      phone: normalizedPhone,
+    smsCodes[phoneForStorage] = {
+      phone: phoneForStorage,
       code,
       customerName: customer.name,
       customerEmail: customer.email,
