@@ -57,26 +57,49 @@ async function sendSMS(phone: string, code: string): Promise<boolean> {
   return true;
 }
 
-// Odeslat SMS s kódem
+// Send SMS with code
 export async function POST(request: NextRequest) {
   try {
-    const { phone } = await request.json();
+    const { phone, name, email } = await request.json();
 
     if (!phone) {
       return NextResponse.json({ error: 'Telefon je povinný' }, { status: 400 });
     }
 
-    // Normalizovat telefon (odstranit mezery a +420)
-    const normalizedPhone = phone.replace(/\s+/g, '').replace(/^\+420/, '');
+    // Normalize phone: remove spaces, add +420 if not present
+    let normalizedPhone = phone.replace(/\s+/g, '');
 
-    // Najít zákazníka podle telefonu
-    const customer = await findCustomerByPhone(normalizedPhone);
+    // Add +420 prefix if not present (and not international number)
+    if (!normalizedPhone.startsWith('+')) {
+      normalizedPhone = '+420' + normalizedPhone;
+    }
+
+    // Remove +420 for storage (we store without prefix)
+    const phoneForStorage = normalizedPhone.replace(/^\+420/, '');
+
+    // Find or create customer
+    let customer = await findCustomerByPhone(phoneForStorage);
 
     if (!customer) {
-      return NextResponse.json(
-        { error: 'Tento telefon není registrován. Kontaktujte administrátora.' },
-        { status: 404 }
-      );
+      // Auto-create customer on first SMS login
+      const {getCustomers, saveCustomers} = await import('@/lib/storage');
+      const customers = await getCustomers();
+
+      const tempName = name || `User ${phoneForStorage}`;
+      const tempEmail = email || `${phoneForStorage}@temp.supdopece.cz`;
+
+      customer = {
+        name: tempName,
+        email: tempEmail,
+        phone: phoneForStorage,
+        token: `phone-${phoneForStorage}`,
+        createdAt: new Date().toISOString(),
+      };
+
+      customers[customer.token] = customer;
+      await saveCustomers(customers);
+
+      console.log('[SMS] Auto-created customer:', tempName, phoneForStorage);
     }
 
     // Generovat 6místný kód
@@ -112,7 +135,7 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// Ověřit kód
+// Verify SMS code
 export async function GET(request: NextRequest) {
   try {
     const phone = request.nextUrl.searchParams.get('phone');
@@ -122,35 +145,39 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Telefon a kód jsou povinné' }, { status: 400 });
     }
 
-    // Normalizovat telefon
-    const normalizedPhone = phone.replace(/\s+/g, '').replace(/^\+420/, '');
+    // Normalize phone: add +420 if not present, then remove for storage
+    let normalizedPhone = phone.replace(/\s+/g, '');
+    if (!normalizedPhone.startsWith('+')) {
+      normalizedPhone = '+420' + normalizedPhone;
+    }
+    const phoneForStorage = normalizedPhone.replace(/^\+420/, '');
 
-    // Načíst kódy
+    // Load SMS codes
     const smsCodes = await getSMSCodes();
-    const smsData = smsCodes[normalizedPhone];
+    const smsData = smsCodes[phoneForStorage];
 
     if (!smsData) {
       return NextResponse.json({ error: 'Neplatný kód' }, { status: 401 });
     }
 
-    // Zkontrolovat expiraci
+    // Check expiration
     if (Date.now() > smsData.expiresAt) {
-      delete smsCodes[normalizedPhone];
+      delete smsCodes[phoneForStorage];
       await saveSMSCodes(smsCodes);
       return NextResponse.json({ error: 'Kód vypršel' }, { status: 401 });
     }
 
-    // Zkontrolovat kód
+    // Verify code
     if (smsData.code !== code) {
       return NextResponse.json({ error: 'Neplatný kód' }, { status: 401 });
     }
 
-    // Smazat použitý kód
-    delete smsCodes[normalizedPhone];
+    // Delete used code
+    delete smsCodes[phoneForStorage];
     await saveSMSCodes(smsCodes);
 
-    // Najít zákazníka
-    const customer = await findCustomerByPhone(normalizedPhone);
+    // Find customer
+    const customer = await findCustomerByPhone(phoneForStorage);
 
     if (!customer) {
       return NextResponse.json({ error: 'Zákazník nenalezen' }, { status: 404 });
@@ -160,7 +187,7 @@ export async function GET(request: NextRequest) {
       valid: true,
       name: customer.name,
       email: customer.email,
-      phone: normalizedPhone,
+      phone: phoneForStorage,
     });
   } catch (error) {
     console.error('Chyba při ověřování kódu:', error);
