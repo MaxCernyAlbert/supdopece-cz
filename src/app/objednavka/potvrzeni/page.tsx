@@ -20,35 +20,47 @@ function OrderConfirmationContent() {
       return;
     }
 
-    // Parse date and time
-    const [day, month, year] = pickupDate.split('.');
-    const timeRange = pickupTime.split('-')[0]; // Get start time from range
+    // Parse date - handle both formats: yyyy-MM-dd and dd.MM.yyyy
+    let year, month, day;
+    if (pickupDate.includes('-')) {
+      [year, month, day] = pickupDate.split('-');
+    } else {
+      [day, month, year] = pickupDate.split('.');
+    }
+
+    // Parse time - get start time from range (e.g., "10:00-12:00" -> "10:00")
+    const timeRange = pickupTime.split('-')[0].trim();
     const [hours, minutes] = timeRange.split(':');
 
     // Create iCal event
-    const eventDate = `${year}${month}${day}T${hours}${minutes}00`;
-    const eventEndDate = `${year}${month}${day}T${parseInt(hours) + 1}${minutes}00`;
+    const eventDate = `${year}${month.padStart(2, '0')}${day.padStart(2, '0')}T${hours.padStart(2, '0')}${(minutes || '00').padStart(2, '0')}00`;
+    const endHour = (parseInt(hours) + 1).toString().padStart(2, '0');
+    const eventEndDate = `${year}${month.padStart(2, '0')}${day.padStart(2, '0')}T${endHour}${(minutes || '00').padStart(2, '0')}00`;
 
     const icsContent = [
       'BEGIN:VCALENDAR',
       'VERSION:2.0',
+      'PRODID:-//Šup do pece//Objednávka//CS',
       'BEGIN:VEVENT',
       `DTSTART:${eventDate}`,
       `DTEND:${eventEndDate}`,
-      'SUMMARY:Vyzvednutí objednávky - Šup do pece',
+      `SUMMARY:Vyzvednout pečivo - Šup do pece`,
       `LOCATION:${config.address}`,
-      'DESCRIPTION:Vyzvednout objednávku čerstvého pečiva',
+      `DESCRIPTION:Vyzvednout objednávku ${orderId || ''} - čerstvé pečivo z pekárny Šup do pece`,
+      `URL:${config.website || ''}`,
       'END:VEVENT',
       'END:VCALENDAR',
-    ].join('\n');
+    ].join('\r\n');
 
     // Download .ics file
-    const blob = new Blob([icsContent], { type: 'text/calendar' });
+    const blob = new Blob([icsContent], { type: 'text/calendar;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
     link.download = 'vyzvednuti-supdopece.ics';
+    document.body.appendChild(link);
     link.click();
+    document.body.removeChild(link);
     URL.revokeObjectURL(url);
   };
 

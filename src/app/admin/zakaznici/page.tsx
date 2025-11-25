@@ -43,6 +43,7 @@ export default function CustomersPage() {
   const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
   const [editForm, setEditForm] = useState({ name: '', email: '', phone: '' });
   const [isSaving, setIsSaving] = useState(false);
+  const [sendingLinkTo, setSendingLinkTo] = useState<string | null>(null);
 
   // Auto-login if session exists
   useEffect(() => {
@@ -188,6 +189,34 @@ export default function CustomersPage() {
       }
     } catch {
       alert('Chyba při komunikaci se serverem');
+    }
+  };
+
+  const handleSendMagicLink = async (customer: Customer) => {
+    if (!customer.phone) return;
+
+    setSendingLinkTo(customer.token);
+    try {
+      const res = await fetch('/api/customers/send-link', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          password: adminPassword,
+          token: customer.token,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (res.ok) {
+        alert(`Magic link odeslán na ${customer.phone}`);
+      } else {
+        alert(data.error || 'Chyba při odesílání');
+      }
+    } catch {
+      alert('Chyba při komunikaci se serverem');
+    } finally {
+      setSendingLinkTo(null);
     }
   };
 
@@ -378,6 +407,15 @@ export default function CustomersPage() {
                       >
                         📋 Kopírovat odkaz
                       </button>
+                      {customer.phone && (
+                        <button
+                          onClick={() => handleSendMagicLink(customer)}
+                          disabled={sendingLinkTo === customer.token}
+                          className="btn-secondary text-xs py-2 px-3 bg-green-50 hover:bg-green-100 text-green-700"
+                        >
+                          {sendingLinkTo === customer.token ? '⏳ Odesílám...' : '📲 Odeslat link SMS'}
+                        </button>
+                      )}
                       <button
                         onClick={() => handleDeleteCustomer(customer)}
                         className="text-xs py-2 px-3 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
