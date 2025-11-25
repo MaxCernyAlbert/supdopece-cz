@@ -8,7 +8,7 @@ import { DateTimePicker } from '@/components/DateTimePicker';
 import { config } from '@/data/config';
 import { formatDate } from '@/lib/utils';
 
-type PaymentMethod = 'online' | 'cash' | 'card_on_pickup';
+type PaymentMethod = 'card' | 'onPickup';
 
 interface CustomerInfo {
   name: string;
@@ -23,7 +23,7 @@ export default function OrderPage() {
   const totalPrice = getTotalPrice();
 
   const [step, setStep] = useState(1);
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('card_on_pickup');
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('onPickup');
   const [customerInfo, setCustomerInfo] = useState<CustomerInfo>({
     name: '',
     email: '',
@@ -32,7 +32,7 @@ export default function OrderPage() {
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Načíst přihlášeného zákazníka
+  // Load logged-in customer
   useEffect(() => {
     const userName = localStorage.getItem('userName');
     const userEmail = localStorage.getItem('userEmail');
@@ -46,7 +46,7 @@ export default function OrderPage() {
     }
   }, []);
 
-  // Redirect pokud je košík prázdný
+  // Redirect if cart is empty
   if (items.length === 0) {
     return (
       <div className="container mx-auto px-4 py-16 text-center">
@@ -75,7 +75,7 @@ export default function OrderPage() {
     setIsSubmitting(true);
 
     try {
-      // Odeslat objednávku na API
+      // Send order to API
       const response = await fetch('/api/orders', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -98,15 +98,15 @@ export default function OrderPage() {
         throw new Error('Chyba při vytváření objednávky');
       }
 
-      if (paymentMethod === 'online') {
-        // Redirect na platební bránu
-        // V reálné aplikaci zde bude redirect na Stripe/GoPay
+      if (paymentMethod === 'card') {
+        // Redirect to payment gateway
+        // In production this would redirect to Stripe/GoPay
         alert('Zde by následoval přesměrování na platební bránu');
       }
 
-      // Úspěch - vyčistit košík a přesměrovat
+      // Success - clear cart and redirect
       clearCart();
-      router.push(`/objednavka/potvrzeni?orderId=${data.order.id}`);
+      router.push(`/objednavka/potvrzeni?date=${pickupDate}&time=${pickupTime}&orderId=${data.order.id}`);
     } catch (error) {
       console.error('Chyba při odesílání objednávky:', error);
       alert('Nastala chyba při odesílání objednávky. Zkuste to prosím znovu.');
@@ -247,51 +247,35 @@ export default function OrderPage() {
                 3. Způsob platby
               </h2>
               <div className="space-y-3">
-                {config.payments.online && (
-                  <label className="flex items-center gap-3 p-4 border rounded-lg cursor-pointer hover:border-primary-300 transition-colors">
-                    <input
-                      type="radio"
-                      name="payment"
-                      value="online"
-                      checked={paymentMethod === 'online'}
-                      onChange={() => setPaymentMethod('online')}
-                      className="w-5 h-5 text-primary-500"
-                    />
-                    <div>
-                      <span className="font-medium">💳 Platba kartou online</span>
-                      <p className="text-sm text-gray-500">Bezpečná platba přes platební bránu</p>
-                    </div>
-                  </label>
-                )}
                 {config.payments.card && (
                   <label className="flex items-center gap-3 p-4 border rounded-lg cursor-pointer hover:border-primary-300 transition-colors">
                     <input
                       type="radio"
                       name="payment"
-                      value="card_on_pickup"
-                      checked={paymentMethod === 'card_on_pickup'}
-                      onChange={() => setPaymentMethod('card_on_pickup')}
+                      value="card"
+                      checked={paymentMethod === 'card'}
+                      onChange={() => setPaymentMethod('card')}
                       className="w-5 h-5 text-primary-500"
                     />
                     <div>
-                      <span className="font-medium">💳 Kartou při vyzvednutí</span>
-                      <p className="text-sm text-gray-500">Platba kartou na prodejně</p>
+                      <span className="font-medium">💳 Kartou online</span>
+                      <p className="text-sm text-gray-500">Bezpečná platba přes platební bránu</p>
                     </div>
                   </label>
                 )}
-                {config.payments.cash && (
+                {config.payments.onPickup && (
                   <label className="flex items-center gap-3 p-4 border rounded-lg cursor-pointer hover:border-primary-300 transition-colors">
                     <input
                       type="radio"
                       name="payment"
-                      value="cash"
-                      checked={paymentMethod === 'cash'}
-                      onChange={() => setPaymentMethod('cash')}
+                      value="onPickup"
+                      checked={paymentMethod === 'onPickup'}
+                      onChange={() => setPaymentMethod('onPickup')}
                       className="w-5 h-5 text-primary-500"
                     />
                     <div>
-                      <span className="font-medium">💵 Hotově při vyzvednutí</span>
-                      <p className="text-sm text-gray-500">Platba v hotovosti na prodejně</p>
+                      <span className="font-medium">💵 Při vyzvednutí (lze hotově i kartou)</span>
+                      <p className="text-sm text-gray-500">Platba při vyzvednutí na prodejně</p>
                     </div>
                   </label>
                 )}

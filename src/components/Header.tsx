@@ -10,7 +10,7 @@ export function Header() {
   const [userName, setUserName] = useState<string | null>(null);
 
   useEffect(() => {
-    // Kontrola, jestli je uživatel přihlášený
+    // Check if user is logged in
     const name = localStorage.getItem('userName');
     setUserName(name);
   }, []);
@@ -69,15 +69,15 @@ export function Header() {
               </div>
             )}
 
-            {/* Mobilní indikátor košíku */}
-            <div className="lg:hidden relative">
+            {/* Cart indicator - clickable */}
+            <Link href="/objednavka" className="lg:hidden relative">
               <span className="text-2xl">🛒</span>
               {totalItems > 0 && (
                 <span className="absolute -top-2 -right-2 bg-primary-500 text-white text-xs w-5 h-5 rounded-full flex items-center justify-center">
                   {totalItems}
                 </span>
               )}
-            </div>
+            </Link>
           </nav>
         </div>
       </div>

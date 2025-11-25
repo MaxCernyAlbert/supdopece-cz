@@ -19,12 +19,15 @@ interface Order {
   pickupDate: string;
   pickupTime: string;
   note?: string;
-  paymentMethod: 'online' | 'cash' | 'card_on_pickup';
+  paymentMethod: 'card' | 'onPickup' | 'online' | 'cash' | 'card_on_pickup'; // Support old and new types
   status: 'new' | 'confirmed' | 'ready' | 'completed' | 'cancelled';
   createdAt: string;
 }
 
-const paymentMethodLabels = {
+const paymentMethodLabels: Record<string, string> = {
+  card: '💳 Kartou online',
+  onPickup: '💵 Při vyzvednutí (hotově/kartou)',
+  // Legacy payment methods (backwards compatibility)
   online: '💳 Kartou online',
   cash: '💵 Hotově',
   card_on_pickup: '💳 Kartou při vyzvednutí',
@@ -45,6 +48,7 @@ export default function OrdersPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [filterCustomer, setFilterCustomer] = useState('');
+  const [filterPickupDate, setFilterPickupDate] = useState('');
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -68,14 +72,20 @@ export default function OrdersPage() {
     }
   };
 
-  // Filtrování objednávek podle zákazníka
-  const filteredOrders = filterCustomer
-    ? orders.filter(
-        (order) =>
-          order.customerName.toLowerCase().includes(filterCustomer.toLowerCase()) ||
-          order.customerEmail.toLowerCase().includes(filterCustomer.toLowerCase())
-      )
-    : orders;
+  // Filter orders by customer and pickup date
+  const filteredOrders = orders.filter((order) => {
+    const matchesCustomer = !filterCustomer ||
+      order.customerName.toLowerCase().includes(filterCustomer.toLowerCase()) ||
+      order.customerEmail.toLowerCase().includes(filterCustomer.toLowerCase());
+
+    const matchesPickupDate = !filterPickupDate ||
+      order.pickupDate === filterPickupDate;
+
+    return matchesCustomer && matchesPickupDate;
+  });
+
+  // Get unique pickup dates for filter dropdown
+  const uniquePickupDates = Array.from(new Set(orders.map(o => o.pickupDate))).sort();
 
   // Statistiky
   const totalOrders = orders.length;
@@ -165,15 +175,29 @@ export default function OrdersPage() {
         </div>
       </div>
 
-      {/* Filtr */}
+      {/* Filters */}
       <div className="card p-4 mb-6">
-        <input
-          type="text"
-          value={filterCustomer}
-          onChange={(e) => setFilterCustomer(e.target.value)}
-          className="input-field"
-          placeholder="🔍 Hledat podle jména nebo emailu zákazníka..."
-        />
+        <div className="grid md:grid-cols-2 gap-4">
+          <input
+            type="text"
+            value={filterCustomer}
+            onChange={(e) => setFilterCustomer(e.target.value)}
+            className="input-field"
+            placeholder="🔍 Hledat podle jména nebo emailu zákazníka..."
+          />
+          <select
+            value={filterPickupDate}
+            onChange={(e) => setFilterPickupDate(e.target.value)}
+            className="input-field"
+          >
+            <option value="">📅 Všechna data vyzvednutí</option>
+            {uniquePickupDates.map((date) => (
+              <option key={date} value={date}>
+                {formatDate(date)}
+              </option>
+            ))}
+          </select>
+        </div>
       </div>
 
       {/* Seznam objednávek */}

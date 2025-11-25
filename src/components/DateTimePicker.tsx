@@ -60,15 +60,15 @@ export function DateTimePicker({ selectedDate, selectedTime, onSelect }: DateTim
 
   return (
     <div className="space-y-6">
-      {/* Výběr dne */}
+      {/* Select pickup day */}
       <div>
         <h3 className="font-medium text-gray-700 mb-3">Vyberte den vyzvednutí</h3>
-        <div className="flex gap-2 overflow-x-auto pb-2">
+        <div className="flex flex-wrap gap-2">
           {availableDates.map((d) => (
             <button
               key={d.dateStr}
               onClick={() => handleDateClick(d.dateStr)}
-              className={`flex-shrink-0 px-4 py-3 rounded-lg border-2 transition-colors ${
+              className={`px-4 py-3 rounded-lg border-2 transition-colors ${
                 activeDate === d.dateStr
                   ? 'border-primary-500 bg-primary-50 text-primary-700'
                   : 'border-gray-200 hover:border-primary-300'
@@ -82,7 +82,7 @@ export function DateTimePicker({ selectedDate, selectedTime, onSelect }: DateTim
         </div>
       </div>
 
-      {/* Výběr času */}
+      {/* Select pickup time */}
       {activeDate && (
         <div>
           <h3 className="font-medium text-gray-700 mb-3">Vyberte čas vyzvednutí</h3>
