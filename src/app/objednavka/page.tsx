@@ -31,6 +31,7 @@ export default function OrderPage() {
     note: '',
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [orderComplete, setOrderComplete] = useState(false);
 
   // Load logged-in customer
   useEffect(() => {
@@ -46,14 +47,26 @@ export default function OrderPage() {
     }));
   }, []);
 
-  // Redirect if cart is empty
-  if (items.length === 0) {
+  // Redirect if cart is empty (but not after successful order)
+  if (items.length === 0 && !orderComplete) {
     return (
       <div className="container mx-auto px-4 py-16 text-center">
         <h1 className="text-2xl font-bold text-bread-dark mb-4">Váš košík je prázdný</h1>
         <Link href="/" className="btn-primary inline-block">
           Zpět na nákup
         </Link>
+      </div>
+    );
+  }
+
+  // Show loading while redirecting after order
+  if (orderComplete) {
+    return (
+      <div className="container mx-auto px-4 py-16 text-center">
+        <div className="card p-8 max-w-md mx-auto">
+          <div className="text-4xl mb-4">✅</div>
+          <p className="text-gray-600">Přesměrovávám na potvrzení...</p>
+        </div>
       </div>
     );
   }
@@ -104,7 +117,8 @@ export default function OrderPage() {
         alert('Zde by následoval přesměrování na platební bránu');
       }
 
-      // Success - clear cart and redirect
+      // Success - mark complete, clear cart and redirect
+      setOrderComplete(true);
       clearCart();
       router.push(`/objednavka/potvrzeni?date=${pickupDate}&time=${pickupTime}&orderId=${data.order.id}&payment=${paymentMethod}&amount=${totalPrice}`);
     } catch (error) {
