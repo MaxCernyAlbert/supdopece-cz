@@ -4,10 +4,14 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 
+type LoginMethod = 'sms' | 'email';
+
 export default function LoginPage() {
   const router = useRouter();
-  const [step, setStep] = useState<'phone' | 'code'>('phone');
+  const [loginMethod, setLoginMethod] = useState<LoginMethod>('sms');
+  const [step, setStep] = useState<'input' | 'code'>('input');
   const [phone, setPhone] = useState('');
+  const [email, setEmail] = useState('');
   const [code, setCode] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
@@ -20,22 +24,32 @@ export default function LoginPage() {
     setDemoCode('');
 
     try {
-      const res = await fetch('/api/auth/sms', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phone }),
-      });
+      let res;
+
+      if (loginMethod === 'sms') {
+        res = await fetch('/api/auth/sms', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ phone }),
+        });
+      } else {
+        res = await fetch('/api/auth/email', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email }),
+        });
+      }
 
       const data = await res.json();
 
       if (res.ok) {
         setStep('code');
-        // Pro demo mód zobrazíme kód
+        // For demo mode display code
         if (data.demoCode) {
           setDemoCode(data.demoCode);
         }
       } else {
-        setError(data.error || 'Chyba při odesílání SMS');
+        setError(data.error || `Chyba při odesílání ${loginMethod === 'sms' ? 'SMS' : 'emailu'}`);
       }
     } catch (err) {
       setError('Chyba při komunikaci se serverem');
@@ -50,16 +64,25 @@ export default function LoginPage() {
     setError('');
 
     try {
-      const res = await fetch(`/api/auth/sms?phone=${encodeURIComponent(phone)}&code=${code}`);
+      let res;
+
+      if (loginMethod === 'sms') {
+        res = await fetch(`/api/auth/sms?phone=${encodeURIComponent(phone)}&code=${code}`);
+      } else {
+        res = await fetch(`/api/auth/email?email=${encodeURIComponent(email)}&code=${code}`);
+      }
+
       const data = await res.json();
 
       if (res.ok && data.valid) {
-        // Uložit přihlášení
+        // Save login info
         localStorage.setItem('userName', data.name);
         localStorage.setItem('userEmail', data.email);
-        localStorage.setItem('userPhone', data.phone);
+        if (data.phone) {
+          localStorage.setItem('userPhone', data.phone);
+        }
 
-        // Přesměrovat
+        // Redirect
         router.push('/');
       } else {
         setError(data.error || 'Neplatný kód');
@@ -75,35 +98,82 @@ export default function LoginPage() {
     <div className="container mx-auto px-4 py-16 max-w-md">
       <div className="card p-8">
         <div className="text-center mb-6">
-          <span className="text-6xl">📱</span>
+          <span className="text-6xl">{loginMethod === 'sms' ? '📱' : '📧'}</span>
           <h1 className="text-2xl font-bold text-bread-dark mt-4 mb-2">
             Přihlášení
           </h1>
           <p className="text-gray-600">
-            {step === 'phone'
-              ? 'Zadejte své telefonní číslo'
-              : 'Zadejte kód z SMS'}
+            {step === 'input'
+              ? `Zadejte sv${loginMethod === 'sms' ? 'é telefonní číslo' : 'ůj email'}`
+              : `Zadejte kód z ${loginMethod === 'sms' ? 'SMS' : 'emailu'}`}
           </p>
         </div>
 
-        {step === 'phone' ? (
+        {/* Login method toggle */}
+        {step === 'input' && (
+          <div className="flex gap-2 mb-6 bg-gray-100 rounded-lg p-1">
+            <button
+              type="button"
+              onClick={() => setLoginMethod('sms')}
+              className={`flex-1 py-2 rounded transition-colors ${
+                loginMethod === 'sms'
+                  ? 'bg-white shadow-sm font-medium'
+                  : 'text-gray-600'
+              }`}
+            >
+              📱 SMS
+            </button>
+            <button
+              type="button"
+              onClick={() => setLoginMethod('email')}
+              className={`flex-1 py-2 rounded transition-colors ${
+                loginMethod === 'email'
+                  ? 'bg-white shadow-sm font-medium'
+                  : 'text-gray-600'
+              }`}
+            >
+              📧 Email
+            </button>
+          </div>
+        )}
+
+        {step === 'input' ? (
           <form onSubmit={handleSendCode} className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Telefonní číslo
-              </label>
-              <input
-                type="tel"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                className="input-field"
-                placeholder="777 123 456"
-                required
-              />
-              <p className="text-xs text-gray-500 mt-1">
-                Můžete zadat i s předvolbou: +420 777 123 456
-              </p>
-            </div>
+            {loginMethod === 'sms' ? (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Telefonní číslo
+                </label>
+                <input
+                  type="tel"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  className="input-field"
+                  placeholder="777 123 456"
+                  required
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  Můžete zadat i s předvolbou: +420 777 123 456
+                </p>
+              </div>
+            ) : (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Email
+                </label>
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="input-field"
+                  placeholder="vas@email.cz"
+                  required
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  Na tento email vám přijde přihlašovací kód
+                </p>
+              </div>
+            )}
 
             {error && (
               <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-sm text-red-700">
@@ -116,7 +186,9 @@ export default function LoginPage() {
               disabled={isLoading}
               className="btn-primary w-full"
             >
-              {isLoading ? 'Odesílám...' : 'Odeslat SMS s kódem'}
+              {isLoading
+                ? 'Odesílám...'
+                : `Odeslat ${loginMethod === 'sms' ? 'SMS' : 'email'} s kódem`}
             </button>
           </form>
         ) : (
@@ -146,7 +218,7 @@ export default function LoginPage() {
                   {demoCode}
                 </p>
                 <p className="text-xs text-yellow-700 mt-2">
-                  V produkci by kód přišel SMS zprávou
+                  V produkci by kód přišel {loginMethod === 'sms' ? 'SMS zprávou' : 'emailem'}
                 </p>
               </div>
             )}
@@ -168,14 +240,14 @@ export default function LoginPage() {
             <button
               type="button"
               onClick={() => {
-                setStep('phone');
+                setStep('input');
                 setCode('');
                 setError('');
                 setDemoCode('');
               }}
               className="btn-secondary w-full"
             >
-              Změnit telefonní číslo
+              Změnit {loginMethod === 'sms' ? 'telefonní číslo' : 'email'}
             </button>
           </form>
         )}
@@ -183,7 +255,7 @@ export default function LoginPage() {
         <div className="mt-6 p-4 bg-blue-50 rounded-lg">
           <p className="text-xs text-blue-800">
             💡 <strong>Nemáte přístup?</strong><br/>
-            Kontaktujte pekárnu pro registraci vašeho telefonního čísla.
+            Kontaktujte pekárnu pro registraci. Můžete se přihlásit pomocí SMS nebo emailu.
           </p>
         </div>
 
