@@ -77,13 +77,15 @@ export default function LoginPage() {
       if (res.ok && data.valid) {
         // Save login info
         localStorage.setItem('userName', data.name);
-        localStorage.setItem('userEmail', data.email);
+        if (data.email) {
+          localStorage.setItem('userEmail', data.email);
+        }
         if (data.phone) {
           localStorage.setItem('userPhone', data.phone);
         }
 
-        // Redirect
-        router.push('/');
+        // Hard redirect to refresh header
+        window.location.href = '/';
       } else {
         setError(data.error || 'Neplatný kód');
       }
