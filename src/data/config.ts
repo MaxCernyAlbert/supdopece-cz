@@ -1,31 +1,31 @@
 import { OpeningHours } from '@/types';
 
-// Konfigurace pekárny
+// Bakery configuration
 export const config = {
-  name: 'Sup do pece',
+  name: 'Šup do pece',
   tagline: 'Řemeslná pekárna',
   description: 'Pečeme z lásky, z kvásku a bez kompromisů',
 
-  // Kontakt
-  address: 'Vaše adresa 123, Město',
-  phone: '+420 123 456 789',
+  // Contact info
+  address: '23. dubna 14, 692 01 Pavlov-Mikulov na Moravě',
+  phone: '722 987 432',
   email: 'info@supdopece.cz',
+  instagram: 'https://www.instagram.com/supdopece',
 
-  // Objednávky
-  minOrderValue: 0, // minimální hodnota objednávky v Kč
-  maxDaysAhead: 14, // max počet dní dopředu pro objednávku
-  slotIntervalMinutes: 60, // interval časových slotů (60 minut = po hodinách)
+  // Orders
+  minOrderValue: 0, // minimum order value in CZK
+  maxDaysAhead: 14, // max days ahead for orders
+  slotIntervalMinutes: 60, // time slot interval (60 mins = hourly)
 
-  // DEADLINE PRO OBJEDNÁVKY
-  // Objednávka na další den musí být nejpozději do této hodiny předchozího dne
-  orderDeadlineHour: 12, // 12:00 (poledne)
+  // ORDER DEADLINE
+  // Orders for next day must be placed before this time on previous day
+  orderDeadlineHour: 12, // 12:00 (noon)
   orderDeadlineMinute: 0,
 
-  // Platby
+  // Payments
   payments: {
-    online: true, // povolit online platby
-    cash: true, // povolit platbu hotově
-    card: true, // povolit platbu kartou při vyzvednutí
+    card: true, // allow online card payment
+    onPickup: true, // allow payment on pickup (cash or card)
   },
 };
 
@@ -67,7 +67,7 @@ export function canOrderForDate(date: Date): boolean {
   return true;
 }
 
-// Generování časových slotů pro daný den
+// Generate time slots for given day (as ranges: 8:30-9:00, 9:00-10:00)
 export function generateTimeSlots(date: Date): string[] {
   const hours = getOpeningHoursForDay(date);
 
@@ -85,9 +85,20 @@ export function generateTimeSlots(date: Date): string[] {
     currentHour < closeHour ||
     (currentHour === closeHour && currentMin < closeMin)
   ) {
-    slots.push(
-      `${currentHour.toString().padStart(2, '0')}:${currentMin.toString().padStart(2, '0')}`
-    );
+    const startTime = `${currentHour.toString().padStart(2, '0')}:${currentMin.toString().padStart(2, '0')}`;
+
+    // Calculate end time
+    let endHour = currentHour;
+    let endMin = currentMin + config.slotIntervalMinutes;
+    if (endMin >= 60) {
+      endHour += 1;
+      endMin = 0;
+    }
+
+    const endTime = `${endHour.toString().padStart(2, '0')}:${endMin.toString().padStart(2, '0')}`;
+
+    // Add as range: "8:30-9:00"
+    slots.push(`${startTime}-${endTime}`);
 
     currentMin += config.slotIntervalMinutes;
     if (currentMin >= 60) {

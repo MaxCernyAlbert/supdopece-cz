@@ -1,6 +1,6 @@
 import { config, openingHours } from '@/data/config';
 
-const dayNames = ['Neděle', 'Pondělí', 'Úterý', 'Středa', 'Čtvrtek', 'Pátek', 'Sobota'];
+const dayNames = ['Ne', 'Po', 'Ut', 'St', 'Ct', 'Pa', 'So'];
 
 export function Footer() {
   return (
@@ -22,6 +22,16 @@ export function Footer() {
               <p>📍 {config.address}</p>
               <p>📞 {config.phone}</p>
               <p>✉️ {config.email}</p>
+              <p>
+                <a
+                  href={config.instagram}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="hover:text-white transition-colors"
+                >
+                  📷 Instagram
+                </a>
+              </p>
             </div>
           </div>
 
