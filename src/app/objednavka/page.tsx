@@ -8,7 +8,7 @@ import { DateTimePicker } from '@/components/DateTimePicker';
 import { config } from '@/data/config';
 import { formatDate } from '@/lib/utils';
 
-type PaymentMethod = 'card' | 'onPickup';
+type PaymentMethod = 'card' | 'onPickup' | 'qrCode';
 
 interface CustomerInfo {
   name: string;
@@ -106,7 +106,7 @@ export default function OrderPage() {
 
       // Success - clear cart and redirect
       clearCart();
-      router.push(`/objednavka/potvrzeni?date=${pickupDate}&time=${pickupTime}&orderId=${data.order.id}`);
+      router.push(`/objednavka/potvrzeni?date=${pickupDate}&time=${pickupTime}&orderId=${data.order.id}&payment=${paymentMethod}&amount=${totalPrice}`);
     } catch (error) {
       console.error('Chyba při odesílání objednávky:', error);
       alert('Nastala chyba při odesílání objednávky. Zkuste to prosím znovu.');
@@ -260,6 +260,22 @@ export default function OrderPage() {
                     <div>
                       <span className="font-medium">💳 Kartou online</span>
                       <p className="text-sm text-gray-500">Bezpečná platba přes platební bránu</p>
+                    </div>
+                  </label>
+                )}
+                {config.payments.qrCode && (
+                  <label className="flex items-center gap-3 p-4 border rounded-lg cursor-pointer hover:border-primary-300 transition-colors">
+                    <input
+                      type="radio"
+                      name="payment"
+                      value="qrCode"
+                      checked={paymentMethod === 'qrCode'}
+                      onChange={() => setPaymentMethod('qrCode')}
+                      className="w-5 h-5 text-primary-500"
+                    />
+                    <div>
+                      <span className="font-medium">📱 QR kódem (bankovní převod)</span>
+                      <p className="text-sm text-gray-500">Naskenujte QR kód v potvrzení objednávky</p>
                     </div>
                   </label>
                 )}

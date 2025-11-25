@@ -20,7 +20,7 @@ interface Order {
   pickupDate: string;
   pickupTime: string;
   note?: string;
-  paymentMethod: 'card' | 'onPickup' | 'online' | 'cash' | 'card_on_pickup'; // Support old and new types
+  paymentMethod: 'card' | 'onPickup' | 'qrCode' | 'online' | 'cash' | 'card_on_pickup'; // Support old and new types
   status: 'new' | 'confirmed' | 'ready' | 'completed' | 'cancelled';
   createdAt: string;
 }
@@ -28,6 +28,7 @@ interface Order {
 const paymentMethodLabels: Record<string, string> = {
   card: '💳 Kartou online',
   onPickup: '💵 Při vyzvednutí (hotově/kartou)',
+  qrCode: '📱 QR kód (bankovní převod)',
   // Legacy payment methods (backwards compatibility)
   online: '💳 Kartou online',
   cash: '💵 Hotově',

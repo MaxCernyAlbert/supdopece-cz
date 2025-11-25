@@ -26,6 +26,15 @@ export const config = {
   payments: {
     card: true, // allow online card payment
     onPickup: true, // allow payment on pickup (cash or card)
+    qrCode: true, // allow payment via QR code (bank transfer)
+  },
+
+  // QR code payment details
+  qrPayment: {
+    accountNumber: '123456789/0800', // Bank account number
+    iban: 'CZ65 0800 0000 1234 5678 9012', // IBAN for international
+    variableSymbol: true, // Use order ID as variable symbol
+    message: 'Šup do pece - objednávka', // Payment message
   },
 };
 
