@@ -75,44 +75,42 @@ export function ProductCard({ product, viewMode = 'grid' }: ProductCardProps) {
   // List view - text only, no images
   return (
     <div className={`card ${!product.available ? 'opacity-60' : ''}`}>
-      <div className="p-4">
-        {/* Content - no image */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div>
-            <div className="flex justify-between items-start mb-2">
-              <h3 className="text-lg font-semibold text-bread-dark">{product.name}</h3>
-              <span className="text-sm text-gray-500 ml-2">{product.weight}</span>
-            </div>
-
-            <p className="text-gray-600 text-sm mb-2">{product.description}</p>
-
-            {/* Allergens */}
-            {product.allergens.length > 0 && (
-              <span className="text-xs text-gray-500">
-                Alergeny:{' '}
-                {product.allergens.map((a, i) => (
-                  <span key={a} title={ALLERGENS[a]}>
-                    {a}
-                    {i < product.allergens.length - 1 ? ', ' : ''}
-                  </span>
-                ))}
-              </span>
-            )}
-          </div>
-
-          <div className="flex justify-between items-center mt-3">
-            <span className="text-xl font-bold text-primary-600">
+      <div className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        {/* Left: Product info */}
+        <div className="flex-grow">
+          <div className="flex flex-wrap items-baseline gap-2 mb-1">
+            <h3 className="text-lg font-semibold text-bread-dark">{product.name}</h3>
+            <span className="text-sm text-gray-500">{product.weight}</span>
+            <span className="text-lg font-bold text-primary-600">
               {product.price} Kč
             </span>
-
-            <button
-              onClick={handleAddToCart}
-              disabled={!product.available}
-              className="btn-primary text-sm py-2 px-4"
-            >
-              {product.available ? 'Přidat do košíku' : 'Vyprodáno'}
-            </button>
           </div>
+
+          <p className="text-gray-600 text-sm mb-2">{product.description}</p>
+
+          {/* Allergens */}
+          {product.allergens.length > 0 && (
+            <span className="text-xs text-gray-500">
+              Alergeny:{' '}
+              {product.allergens.map((a, i) => (
+                <span key={a} title={ALLERGENS[a]}>
+                  {a}
+                  {i < product.allergens.length - 1 ? ', ' : ''}
+                </span>
+              ))}
+            </span>
+          )}
+        </div>
+
+        {/* Right: Add button */}
+        <div className="flex-shrink-0">
+          <button
+            onClick={handleAddToCart}
+            disabled={!product.available}
+            className="btn-primary text-sm py-2 px-4 w-full sm:w-auto"
+          >
+            {product.available ? 'Přidat' : 'Vyprodáno'}
+          </button>
         </div>
       </div>
     </div>
