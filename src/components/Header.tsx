@@ -61,10 +61,10 @@ export function Header() {
                   📱 Přihlásit
                 </Link>
                 <Link
-                  href="/admin"
+                  href="/registrace"
                   className="text-sm hover:text-primary-300 transition-colors hidden md:inline"
                 >
-                  👨‍💼 Admin
+                  📝 Registrace
                 </Link>
               </div>
             )}

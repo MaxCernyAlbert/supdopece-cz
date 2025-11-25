@@ -255,10 +255,12 @@ export default function LoginPage() {
         )}
 
         <div className="mt-6 p-4 bg-blue-50 rounded-lg">
-          <p className="text-xs text-blue-800">
-            💡 <strong>Nemáte přístup?</strong><br/>
-            Kontaktujte pekárnu pro registraci. Můžete se přihlásit pomocí SMS nebo emailu.
+          <p className="text-sm text-blue-800 mb-3">
+            💡 <strong>Nemáte účet?</strong>
           </p>
+          <Link href="/registrace" className="btn-secondary w-full block text-center">
+            📝 Zaregistrovat se
+          </Link>
         </div>
 
         <div className="mt-6 text-center">
