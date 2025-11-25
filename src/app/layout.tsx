@@ -4,11 +4,12 @@ import './globals.css';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import { StoreProvider } from '@/components/StoreProvider';
+import { PWAInstallPrompt } from '@/components/PWAInstallPrompt';
 
 const inter = Inter({ subsets: ['latin', 'latin-ext'] });
 
 export const metadata: Metadata = {
-  title: 'Sup do pece | Řemeslná pekárna',
+  title: 'Šup do pece | Řemeslná pekárna',
   description: 'Pečeme z lásky, z kvásku a bez kompromisů. Objednejte si čerstvý chléb a pečivo online.',
   manifest: '/manifest.json',
   themeColor: '#8b5a2b',
@@ -16,7 +17,7 @@ export const metadata: Metadata = {
   appleWebApp: {
     capable: true,
     statusBarStyle: 'default',
-    title: 'Sup do pece',
+    title: 'Šup do pece',
   },
 };
 
@@ -34,6 +35,7 @@ export default function RootLayout({
             {children}
           </main>
           <Footer />
+          <PWAInstallPrompt />
         </StoreProvider>
       </body>
     </html>
