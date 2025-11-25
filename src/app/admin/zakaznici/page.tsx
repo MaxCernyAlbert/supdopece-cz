@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { formatDateTime } from '@/lib/utils';
+import { saveAdminSession, getAdminSession, clearAdminSession } from '@/lib/adminAuth';
 
 interface Customer {
   name: string;
@@ -20,26 +21,48 @@ export default function CustomersPage() {
   const [error, setError] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
 
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
+  // Auto-login if session exists
+  useEffect(() => {
+    const sessionPassword = getAdminSession();
+    if (sessionPassword) {
+      setAdminPassword(sessionPassword);
+      // Trigger auto-login
+      handleLoginWithPassword(sessionPassword);
+    }
+  }, []);
+
+  const handleLoginWithPassword = async (password: string) => {
     setIsLoading(true);
     setError('');
 
     try {
-      const res = await fetch(`/api/customers?password=${adminPassword}`);
+      const res = await fetch(`/api/customers?password=${password}`);
       const data = await res.json();
 
       if (res.ok) {
         setCustomers(data.customers);
         setIsAuthenticated(true);
+        saveAdminSession(password); // Save session on successful login
       } else {
         setError(data.error || 'Neplatné heslo');
+        clearAdminSession();
       }
     } catch (err) {
       setError('Chyba při načítání zákazníků');
+      clearAdminSession();
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    await handleLoginWithPassword(adminPassword);
+  };
+
+  const handleLogout = () => {
+    setIsAuthenticated(false);
+    clearAdminSession();
   };
 
   // Filtrování zákazníků
@@ -118,7 +141,7 @@ export default function CustomersPage() {
             👨‍💼 Admin panel
           </Link>
           <button
-            onClick={() => setIsAuthenticated(false)}
+            onClick={handleLogout}
             className="text-sm text-gray-500 hover:text-red-600"
           >
             Odhlásit

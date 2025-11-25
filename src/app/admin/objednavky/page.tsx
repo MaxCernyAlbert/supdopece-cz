@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { formatDate, formatDateTime } from '@/lib/utils';
+import { saveAdminSession, getAdminSession, clearAdminSession } from '@/lib/adminAuth';
 
 interface Order {
   id: string;
@@ -50,26 +51,48 @@ export default function OrdersPage() {
   const [filterCustomer, setFilterCustomer] = useState('');
   const [filterPickupDate, setFilterPickupDate] = useState('');
 
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
+  // Auto-login if session exists
+  useEffect(() => {
+    const sessionPassword = getAdminSession();
+    if (sessionPassword) {
+      setAdminPassword(sessionPassword);
+      // Trigger auto-login
+      handleLoginWithPassword(sessionPassword);
+    }
+  }, []);
+
+  const handleLoginWithPassword = async (password: string) => {
     setIsLoading(true);
     setError('');
 
     try {
-      const res = await fetch(`/api/orders?password=${adminPassword}`);
+      const res = await fetch(`/api/orders?password=${password}`);
       const data = await res.json();
 
       if (res.ok) {
         setOrders(data.orders);
         setIsAuthenticated(true);
+        saveAdminSession(password); // Save session on successful login
       } else {
         setError(data.error || 'Neplatné heslo');
+        clearAdminSession();
       }
     } catch (err) {
       setError('Chyba při načítání objednávek');
+      clearAdminSession();
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    await handleLoginWithPassword(adminPassword);
+  };
+
+  const handleLogout = () => {
+    setIsAuthenticated(false);
+    clearAdminSession();
   };
 
   // Filter orders by customer and pickup date
@@ -151,7 +174,7 @@ export default function OrdersPage() {
             👨‍💼 Admin panel
           </Link>
           <button
-            onClick={() => setIsAuthenticated(false)}
+            onClick={handleLogout}
             className="text-sm text-gray-500 hover:text-red-600"
           >
             Odhlásit
