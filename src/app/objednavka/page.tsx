@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useCartStore } from '@/store/cartStore';
 import { DateTimePicker } from '@/components/DateTimePicker';
@@ -18,7 +17,6 @@ interface CustomerInfo {
 }
 
 export default function OrderPage() {
-  const router = useRouter();
   const { items, getTotalPrice, pickupDate, pickupTime, setPickupDateTime, clearCart } = useCartStore();
   const totalPrice = getTotalPrice();
 
@@ -31,7 +29,6 @@ export default function OrderPage() {
     note: '',
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [orderComplete, setOrderComplete] = useState(false);
 
   // Load logged-in customer
   useEffect(() => {
@@ -47,26 +44,14 @@ export default function OrderPage() {
     }));
   }, []);
 
-  // Redirect if cart is empty (but not after successful order)
-  if (items.length === 0 && !orderComplete) {
+  // Redirect if cart is empty
+  if (items.length === 0) {
     return (
       <div className="container mx-auto px-4 py-16 text-center">
         <h1 className="text-2xl font-bold text-bread-dark mb-4">Váš košík je prázdný</h1>
         <Link href="/" className="btn-primary inline-block">
           Zpět na nákup
         </Link>
-      </div>
-    );
-  }
-
-  // Show loading while redirecting after order
-  if (orderComplete) {
-    return (
-      <div className="container mx-auto px-4 py-16 text-center">
-        <div className="card p-8 max-w-md mx-auto">
-          <div className="text-4xl mb-4">✅</div>
-          <p className="text-gray-600">Přesměrovávám na potvrzení...</p>
-        </div>
       </div>
     );
   }
@@ -117,10 +102,9 @@ export default function OrderPage() {
         alert('Zde by následoval přesměrování na platební bránu');
       }
 
-      // Success - mark complete, clear cart and redirect
-      setOrderComplete(true);
+      // Success - clear cart and redirect immediately
       clearCart();
-      router.push(`/objednavka/potvrzeni?date=${pickupDate}&time=${pickupTime}&orderId=${data.order.id}&payment=${paymentMethod}&amount=${totalPrice}`);
+      window.location.href = `/objednavka/potvrzeni?date=${pickupDate}&time=${pickupTime}&orderId=${data.order.id}&payment=${paymentMethod}&amount=${totalPrice}`;
     } catch (error) {
       console.error('Chyba při odesílání objednávky:', error);
       alert('Nastala chyba při odesílání objednávky. Zkuste to prosím znovu.');
