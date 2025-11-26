@@ -44,8 +44,8 @@ export default function OrderPage() {
     }));
   }, []);
 
-  // Redirect if cart is empty
-  if (items.length === 0) {
+  // Redirect if cart is empty (but not while submitting - redirect is in progress)
+  if (items.length === 0 && !isSubmitting) {
     return (
       <div className="container mx-auto px-4 py-16 text-center">
         <h1 className="text-2xl font-bold text-bread-dark mb-4">Váš košík je prázdný</h1>
@@ -108,9 +108,9 @@ export default function OrderPage() {
     } catch (error) {
       console.error('Chyba při odesílání objednávky:', error);
       alert('Nastala chyba při odesílání objednávky. Zkuste to prosím znovu.');
-    } finally {
       setIsSubmitting(false);
     }
+    // Don't reset isSubmitting on success - redirect is happening
   };
 
   return (
