@@ -1,18 +1,25 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { config } from '@/data/config';
-import { useSearchParams } from 'next/navigation';
-import { Suspense } from 'react';
 import { formatPrice } from '@/lib/utils';
 
-function OrderConfirmationContent() {
-  const searchParams = useSearchParams();
-  const pickupDate = searchParams.get('date');
-  const pickupTime = searchParams.get('time');
-  const orderId = searchParams.get('orderId');
-  const paymentMethod = searchParams.get('payment');
-  const amount = searchParams.get('amount');
+export default function OrderConfirmationPage() {
+  const [pickupDate, setPickupDate] = useState<string | null>(null);
+  const [pickupTime, setPickupTime] = useState<string | null>(null);
+  const [orderId, setOrderId] = useState<string | null>(null);
+  const [paymentMethod, setPaymentMethod] = useState<string | null>(null);
+  const [amount, setAmount] = useState<string | null>(null);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    setPickupDate(params.get('date'));
+    setPickupTime(params.get('time'));
+    setOrderId(params.get('orderId'));
+    setPaymentMethod(params.get('payment'));
+    setAmount(params.get('amount'));
+  }, []);
 
   const handleAddToCalendar = () => {
     if (!pickupDate || !pickupTime) {
@@ -172,22 +179,5 @@ function OrderConfirmationContent() {
         </div>
       </div>
     </div>
-  );
-}
-
-export default function OrderConfirmationPage() {
-  return (
-    <Suspense
-      fallback={
-        <div className="container mx-auto px-4 py-16 text-center max-w-2xl">
-          <div className="card p-8">
-            <div className="text-4xl mb-4">⏳</div>
-            <p>Načítám...</p>
-          </div>
-        </div>
-      }
-    >
-      <OrderConfirmationContent />
-    </Suspense>
   );
 }
